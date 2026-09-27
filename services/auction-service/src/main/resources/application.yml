@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: auction-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: auction-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+app:
+  dynamodb:
+    endpoint: ${APP_DYNAMODB_ENDPOINT:http://localhost:4566}
+    region: ${APP_DYNAMODB_REGION:us-east-1}
+    access-key: ${APP_DYNAMODB_ACCESS_KEY:test}
+    secret-key: ${APP_DYNAMODB_SECRET_KEY:test}
+  auction:
+    window-seconds: ${APP_AUCTION_WINDOW_SECONDS:45}
+    closer-fixed-delay-ms: ${APP_AUCTION_CLOSER_FIXED_DELAY_MS:1000}
+    eligible-funder-ids: ${APP_AUCTION_ELIGIBLE_FUNDER_IDS:funder-1,funder-2,funder-3}
+  outbox:
+    relay-fixed-delay-ms: ${APP_OUTBOX_RELAY_FIXED_DELAY_MS:1000}
