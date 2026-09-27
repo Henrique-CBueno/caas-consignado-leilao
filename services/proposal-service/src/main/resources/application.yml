@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: proposal-service
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+app:
+  outbox:
+    relay-fixed-delay-ms: ${APP_OUTBOX_RELAY_FIXED_DELAY_MS:500}

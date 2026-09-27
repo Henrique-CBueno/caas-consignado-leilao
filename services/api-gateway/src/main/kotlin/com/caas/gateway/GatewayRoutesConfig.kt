@@ -12,8 +12,10 @@ class GatewayRoutesConfig {
     fun routes(
         builder: RouteLocatorBuilder,
         @Value("\${app.routes.tenant-service-uri}") tenantServiceUri: String,
+        @Value("\${app.routes.proposal-service-uri}") proposalServiceUri: String,
     ): RouteLocator =
         builder.routes()
             .route("tenant-service") { r -> r.path("/tenants/**").uri(tenantServiceUri) }
+            .route("proposal-service") { r -> r.path("/proposals/**").uri(proposalServiceUri) }
             .build()
 }

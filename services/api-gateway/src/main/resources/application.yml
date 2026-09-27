@@ -7,6 +7,7 @@ app:
     jwk-set-uri: ${APP_COGNITO_JWK_SET_URI:https://example.invalid/.well-known/jwks.json}
   routes:
     tenant-service-uri: ${APP_ROUTES_TENANT_SERVICE_URI:http://localhost:1}
+    proposal-service-uri: ${APP_ROUTES_PROPOSAL_SERVICE_URI:http://localhost:1}
 
 resilience4j:
   circuitbreaker:

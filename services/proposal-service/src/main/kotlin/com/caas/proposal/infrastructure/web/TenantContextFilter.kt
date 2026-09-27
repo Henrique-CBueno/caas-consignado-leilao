@@ -1,0 +1,30 @@
+package com.caas.proposal.infrastructure.web
+
+import com.caas.proposal.domain.TenantId
+import com.caas.proposal.infrastructure.TenantContextHolder
+import jakarta.servlet.FilterChain
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import org.springframework.stereotype.Component
+import org.springframework.web.filter.OncePerRequestFilter
+import java.util.UUID
+
+// Ver TenantContextFilter do tenant-service: confia no header X-Tenant-Id porque
+// o api-gateway é a única borda que valida o JWT antes de rotear internamente.
+@Component
+class TenantContextFilter : OncePerRequestFilter() {
+    override fun doFilterInternal(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        filterChain: FilterChain,
+    ) {
+        try {
+            request.getHeader("X-Tenant-Id")?.let {
+                TenantContextHolder.set(TenantId(UUID.fromString(it)))
+            }
+            filterChain.doFilter(request, response)
+        } finally {
+            TenantContextHolder.clear()
+        }
+    }
+}
