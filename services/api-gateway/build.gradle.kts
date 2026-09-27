@@ -1,12 +1,13 @@
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.spring")
+    id("java")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
 }
 
-kotlin {
-    jvmToolchain(21)
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 dependencyManagement {
@@ -20,7 +21,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j")
     implementation("io.github.resilience4j:resilience4j-reactor:2.2.0")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
