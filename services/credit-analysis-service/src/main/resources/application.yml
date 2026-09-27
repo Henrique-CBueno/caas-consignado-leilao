@@ -1,6 +1,12 @@
 spring:
   application:
     name: credit-analysis-service
+  cloud:
+    vault:
+      # spring-cloud-vault-config fica ativo só por estar no classpath (achado
+      # empírico: não é gated por profile nem por spring.config.import sozinho).
+      # Desligado por padrão; a seção do perfil "jev" religa.
+      enabled: false
   jpa:
     hibernate:
       ddl-auto: validate
@@ -21,3 +27,44 @@ spring:
 app:
   outbox:
     relay-fixed-delay-ms: ${APP_OUTBOX_RELAY_FIXED_DELAY_MS:500}
+  jev:
+    decisions-url: ${APP_JEV_DECISIONS_URL:https://openrouter.ai/api/alpha/decisions}
+    api-key: ${OPENROUTER_API_KEY:}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      jev-openrouter:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+  ratelimiter:
+    instances:
+      jev-openrouter:
+        limit-for-period: 50
+        limit-refresh-period: 1s
+        timeout-duration: 1s
+
+---
+# Perfil "jev": ativa a decisão real via OpenRouter + leitura do segredo no Vault.
+# Nunca ativo por padrão (nem em testes) — "optional:" evita falha dura se o
+# Vault não estiver acessível quando o perfil não é usado de propósito.
+spring:
+  config:
+    activate:
+      on-profile: jev
+    import: "optional:vault://"
+  cloud:
+    vault:
+      enabled: true
+      uri: ${VAULT_URI:http://localhost:8200}
+      token: ${VAULT_TOKEN:dev-root-token}
+      kv:
+        enabled: true
+        backend: secret
+        default-context: credit-analysis-service
+
+app:
+  credit-decision:
+    provider: jev

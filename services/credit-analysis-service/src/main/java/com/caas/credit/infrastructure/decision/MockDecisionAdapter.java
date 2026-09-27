@@ -4,12 +4,16 @@ import com.caas.credit.application.CreditDecisionPort;
 import com.caas.credit.application.CreditDecisionRequest;
 import com.caas.credit.domain.CreditDecisionResult;
 import com.caas.credit.domain.Decision;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 // Sem dependência externa (nenhuma chamada de rede): score simulado via hash
 // estável do borrowerId. String.hashCode() no Java é garantido determinístico
 // pela especificação da linguagem (mesmo algoritmo sempre, entre JVMs/execuções).
+// Padrão absoluto (matchIfMissing): nunca depender de uma API externa paga em
+// CI/local sem configuração explícita — ver JevOpenRouterAdapter.
 @Component
+@ConditionalOnProperty(name = "app.credit-decision.provider", havingValue = "mock", matchIfMissing = true)
 public class MockDecisionAdapter implements CreditDecisionPort {
 
     @Override
