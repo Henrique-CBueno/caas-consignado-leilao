@@ -41,7 +41,8 @@ public class AuctionCloser {
                 closed.tenantId().value(),
                 closed.status().name(),
                 winner.map(Bid::funderId).orElse(null),
-                winner.map(Bid::rate).orElse(null)
+                winner.map(Bid::rate).orElse(null),
+                winner.map(Bid::termMonths).orElse(null)
             );
 
             auctionRepository.saveAndPublish(closed, closed.proposalId().value(), "AuctionClosed", event);

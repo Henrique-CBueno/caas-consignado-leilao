@@ -5,6 +5,7 @@ import com.caas.credit.domain.CreditDecision;
 import com.caas.credit.domain.CreditDecisionId;
 import com.caas.credit.domain.Decision;
 import com.caas.credit.domain.ProposalId;
+import com.caas.credit.domain.Stage;
 import com.caas.credit.domain.TenantId;
 import com.caas.credit.infrastructure.TenantContextHolder;
 import jakarta.persistence.EntityManager;
@@ -30,8 +31,11 @@ public class JpaCreditDecisionRepository implements CreditDecisionRepository {
             creditDecision.id().value(),
             creditDecision.proposalId().value(),
             creditDecision.tenantId().value(),
+            creditDecision.borrowerId(),
+            creditDecision.requestedAmount(),
             creditDecision.decision().name(),
-            creditDecision.confidence()
+            creditDecision.confidence(),
+            creditDecision.stage().name()
         ));
         return toDomain(saved);
     }
@@ -41,6 +45,15 @@ public class JpaCreditDecisionRepository implements CreditDecisionRepository {
     public CreditDecision findById(CreditDecisionId id) {
         applyTenantContext();
         return springDataRepository.findById(id.value()).map(JpaCreditDecisionRepository::toDomain).orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public CreditDecision findByProposalIdAndStage(ProposalId proposalId, Stage stage) {
+        applyTenantContext();
+        CreditDecisionJpaEntity entity =
+            springDataRepository.findByProposalIdAndStage(proposalId.value(), stage.name());
+        return entity == null ? null : toDomain(entity);
     }
 
     // Ver JpaTenantRepository (tenant-service) para o racional completo: sem isso,
@@ -62,8 +75,11 @@ public class JpaCreditDecisionRepository implements CreditDecisionRepository {
             new CreditDecisionId(entity.getId()),
             new ProposalId(entity.getProposalId()),
             new TenantId(entity.getTenantId()),
+            entity.getBorrowerId(),
+            entity.getRequestedAmount(),
             Decision.valueOf(entity.getDecision()),
-            entity.getConfidence()
+            entity.getConfidence(),
+            Stage.valueOf(entity.getStage())
         );
     }
 }

@@ -4,6 +4,7 @@ import com.caas.credit.domain.CreditDecision;
 import com.caas.credit.domain.CreditDecisionId;
 import com.caas.credit.domain.CreditDecisionResult;
 import com.caas.credit.domain.ProposalId;
+import com.caas.credit.domain.Stage;
 import com.caas.credit.domain.TenantId;
 import com.caas.credit.infrastructure.TenantContextHolder;
 import com.caas.events.CreditDecisionMadeEvent;
@@ -47,8 +48,11 @@ public class ProcessProposalCreatedUseCase {
                 new CreditDecisionId(UUID.randomUUID()),
                 request.proposalId(),
                 tenantId,
+                request.borrowerId(),
+                request.requestedAmount(),
                 result.decision(),
-                result.confidence()
+                result.confidence(),
+                Stage.PRE_AUCTION
             );
             creditDecisionRepository.save(decision);
 
@@ -60,7 +64,9 @@ public class ProcessProposalCreatedUseCase {
                     decision.proposalId().value(),
                     decision.tenantId().value(),
                     decision.decision().name(),
-                    decision.confidence()
+                    decision.confidence(),
+                    decision.stage().name(),
+                    decision.requestedAmount()
                 )
             );
         } finally {

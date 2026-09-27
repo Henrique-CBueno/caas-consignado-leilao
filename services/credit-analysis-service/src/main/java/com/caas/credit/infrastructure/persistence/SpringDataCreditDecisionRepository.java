@@ -4,4 +4,5 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SpringDataCreditDecisionRepository extends JpaRepository<CreditDecisionJpaEntity, UUID> {
+    CreditDecisionJpaEntity findByProposalIdAndStage(UUID proposalId, String stage);
 }

@@ -21,6 +21,10 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
@@ -29,9 +33,15 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 class CreditDecisionMadeToAuctionOpenedIntegrationTest {
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private TestRestTemplate restTemplate;
 
     @Container
     static LocalStackContainer localstack =
@@ -58,8 +68,9 @@ class CreditDecisionMadeToAuctionOpenedIntegrationTest {
     void anApprovedCreditDecisionPublishesAnAuctionOpenedEventToKafka() throws Exception {
         UUID proposalId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        CreditDecisionMadeEvent creditDecisionMade =
-            new CreditDecisionMadeEvent(proposalId, tenantId, "APPROVE", 0.95);
+        CreditDecisionMadeEvent creditDecisionMade = new CreditDecisionMadeEvent(
+            proposalId, tenantId, "APPROVE", 0.95, "PRE_AUCTION", new java.math.BigDecimal("5000.00")
+        );
 
         Properties producerProps = new Properties();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
@@ -99,5 +110,33 @@ class CreditDecisionMadeToAuctionOpenedIntegrationTest {
         assertThat(event).isNotNull();
         assertThat(event.tenantId()).isEqualTo(tenantId);
         assertThat(event.eligibleFunderIds()).isNotEmpty();
+    }
+
+    @Test
+    void aPostAuctionCreditDecisionDoesNotOpenASecondAuction() throws Exception {
+        UUID proposalId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        CreditDecisionMadeEvent postAuctionDecision = new CreditDecisionMadeEvent(
+            proposalId, tenantId, "APPROVE", 0.95, "POST_AUCTION", new java.math.BigDecimal("5000.00")
+        );
+
+        Properties producerProps = new Properties();
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps)) {
+            producer.send(new ProducerRecord<>(
+                "credit.decision.made",
+                proposalId.toString(),
+                objectMapper.writeValueAsString(postAuctionDecision)
+            )).get();
+        }
+
+        Thread.sleep(3000);
+
+        var response = restTemplate.getForEntity(
+            "http://localhost:" + port + "/auctions/" + proposalId, String.class
+        );
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 }

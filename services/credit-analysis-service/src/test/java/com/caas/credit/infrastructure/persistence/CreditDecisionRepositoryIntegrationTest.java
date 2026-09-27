@@ -7,8 +7,10 @@ import com.caas.credit.domain.CreditDecision;
 import com.caas.credit.domain.CreditDecisionId;
 import com.caas.credit.domain.Decision;
 import com.caas.credit.domain.ProposalId;
+import com.caas.credit.domain.Stage;
 import com.caas.credit.domain.TenantId;
 import com.caas.credit.infrastructure.TenantContextHolder;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -50,8 +52,11 @@ class CreditDecisionRepositoryIntegrationTest {
             new CreditDecisionId(UUID.randomUUID()),
             new ProposalId(UUID.randomUUID()),
             tenantA,
+            "12345678900",
+            new BigDecimal("5000.00"),
             Decision.APPROVE,
-            0.9
+            0.9,
+            Stage.PRE_AUCTION
         );
 
         TenantContextHolder.set(tenantA);

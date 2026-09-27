@@ -8,6 +8,7 @@ public record AuctionClosedEvent(
     UUID tenantId,
     String status,
     String winningFunderId,
-    BigDecimal winningRate
+    BigDecimal winningRate,
+    Integer winningTermMonths
 ) {
 }

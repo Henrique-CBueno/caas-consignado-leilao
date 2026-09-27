@@ -38,7 +38,7 @@ public class CreditDecisionMadeListener {
     @KafkaListener(topics = "credit.decision.made")
     public void onMessage(String payload) throws Exception {
         CreditDecisionMadeEvent event = objectMapper.readValue(payload, CreditDecisionMadeEvent.class);
-        if (!"APPROVE".equals(event.decision())) {
+        if (!"APPROVE".equals(event.decision()) || !"PRE_AUCTION".equals(event.stage())) {
             return;
         }
         Instant now = Instant.now();
