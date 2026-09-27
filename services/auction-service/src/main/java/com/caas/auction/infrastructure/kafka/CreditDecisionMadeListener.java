@@ -5,6 +5,7 @@ import com.caas.auction.domain.Auction;
 import com.caas.auction.domain.AuctionStatus;
 import com.caas.auction.domain.ProposalId;
 import com.caas.auction.domain.TenantId;
+import com.caas.events.AuctionOpenedEvent;
 import com.caas.events.CreditDecisionMadeEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -41,16 +42,21 @@ public class CreditDecisionMadeListener {
             return;
         }
         Instant now = Instant.now();
+        Instant expiresAt = now.plusSeconds(windowSeconds);
         Auction auction = new Auction(
             new ProposalId(event.proposalId()),
             new TenantId(event.tenantId()),
             AuctionStatus.OPEN,
             eligibleFunderIds,
             now,
-            now.plusSeconds(windowSeconds),
+            expiresAt,
             List.of(),
             null
         );
-        auctionRepository.save(auction);
+
+        AuctionOpenedEvent auctionOpened = new AuctionOpenedEvent(
+            event.proposalId(), event.tenantId(), eligibleFunderIds, now, expiresAt
+        );
+        auctionRepository.saveAndPublish(auction, event.proposalId(), "AuctionOpened", auctionOpened);
     }
 }

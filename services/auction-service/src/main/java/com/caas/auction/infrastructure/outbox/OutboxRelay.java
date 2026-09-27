@@ -59,6 +59,7 @@ public class OutboxRelay {
         return switch (eventType) {
             case "AuctionClosed" -> "auction.closed";
             case "AuctionBidPlaced" -> "auction.bid.placed";
+            case "AuctionOpened" -> "auction.opened";
             default -> throw new IllegalStateException("Sem tópico Kafka mapeado para o evento '" + eventType + "'");
         };
     }

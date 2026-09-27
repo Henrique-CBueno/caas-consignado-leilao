@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: funder-bot-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: funder-bot-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+app:
+  auction-service:
+    base-url: ${AUCTION_SERVICE_BASE_URL:http://localhost:8080}
+  funder-bot:
+    min-delay-ms: ${APP_FUNDER_BOT_MIN_DELAY_MS:500}
+    max-delay-ms: ${APP_FUNDER_BOT_MAX_DELAY_MS:3000}
+    bots:
+      - id: funder-1
+        base-rate: 2.5
+        term-months: 24
+      - id: funder-2
+        base-rate: 1.99
+        term-months: 18
+      - id: funder-3
+        base-rate: 2.2
+        term-months: 12
