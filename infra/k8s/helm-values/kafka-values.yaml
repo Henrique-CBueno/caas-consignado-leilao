@@ -1,0 +1,53 @@
+# Ver ADR-0008: chart bitnami/kafka fixado na 31.5.0 (Kafka 3.9.0, última versão
+# com suporte a Zookeeper) — imagens movidas para bitnamilegacy/* pela Bitnami.
+# allowInsecureImages: o chart valida a imagem contra uma lista fixa e rejeita
+# qualquer registry diferente de bitnami/* por padrão — esperado, não um erro real.
+global:
+  security:
+    allowInsecureImages: true
+
+kraft:
+  enabled: false
+
+zookeeper:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/zookeeper
+  replicaCount: 1
+  persistence:
+    size: 1Gi
+
+image:
+  registry: docker.io
+  repository: bitnamilegacy/kafka
+
+# Em modo Zookeeper (kraft.enabled: false) o chart usa os pools controller/broker
+# do KRaft de forma diferente: controller.replicaCount precisa ser zero, e o único
+# broker real vem de broker.replicaCount.
+controller:
+  replicaCount: 0
+
+broker:
+  replicaCount: 1
+
+persistence:
+  size: 2Gi
+
+listeners:
+  client:
+    protocol: PLAINTEXT
+  controller:
+    protocol: PLAINTEXT
+  interbroker:
+    protocol: PLAINTEXT
+
+resourcesPreset: "small"
+
+# Único broker: os defaults do Kafka (replication factor 3 para tópicos internos)
+# não fecham a conta com 1 node só — mesmo motivo do docker-compose.dev.yml
+# (KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1).
+extraConfigYaml:
+  offsets.topic.replication.factor: 1
+  transaction.state.log.replication.factor: 1
+  transaction.state.log.min.isr: 1

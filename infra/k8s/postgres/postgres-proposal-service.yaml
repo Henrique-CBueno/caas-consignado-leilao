@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-proposal-service
+  namespace: caas
+spec:
+  serviceName: postgres-proposal-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-proposal-service
+  template:
+    metadata:
+      labels:
+        app: postgres-proposal-service
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: caas
+            - name: POSTGRES_PASSWORD
+              value: caas
+            - name: POSTGRES_DB
+              value: caas
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "caas"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-proposal-service
+  namespace: caas
+spec:
+  selector:
+    app: postgres-proposal-service
+  ports:
+    - port: 5432
+      targetPort: 5432

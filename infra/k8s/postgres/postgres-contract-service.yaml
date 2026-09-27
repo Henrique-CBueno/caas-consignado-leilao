@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-contract-service
+  namespace: caas
+spec:
+  serviceName: postgres-contract-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-contract-service
+  template:
+    metadata:
+      labels:
+        app: postgres-contract-service
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: caas
+            - name: POSTGRES_PASSWORD
+              value: caas
+            - name: POSTGRES_DB
+              value: caas
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "caas"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-contract-service
+  namespace: caas
+spec:
+  selector:
+    app: postgres-contract-service
+  ports:
+    - port: 5432
+      targetPort: 5432

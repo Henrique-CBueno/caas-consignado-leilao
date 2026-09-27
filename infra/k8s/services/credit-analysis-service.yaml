@@ -1,0 +1,30 @@
+# Sem starter-web: credit-analysis-service não abre porta HTTP, só consome Kafka
+# e faz JPA — por isso sem containerPort/readinessProbe/Service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: credit-analysis-service
+  namespace: caas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: credit-analysis-service
+  template:
+    metadata:
+      labels:
+        app: credit-analysis-service
+    spec:
+      containers:
+        - name: credit-analysis-service
+          image: caas/credit-analysis-service:local
+          imagePullPolicy: Never
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres-credit-analysis-service:5432/caas
+            - name: SPRING_DATASOURCE_USERNAME
+              value: caas
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: caas
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092

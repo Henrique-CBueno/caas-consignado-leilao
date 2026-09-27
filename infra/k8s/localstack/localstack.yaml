@@ -1,0 +1,40 @@
+# LocalStack de runtime, só para o auction-service (DynamoDB) — instância dedicada
+# ao runtime do cluster, separada do LocalStack standalone via docker-compose cujo
+# papel continua sendo servir de alvo do terraform apply (Milestone 10).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: localstack
+  namespace: caas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: localstack
+  template:
+    metadata:
+      labels:
+        app: localstack
+    spec:
+      containers:
+        - name: localstack
+          image: localstack/localstack:3.8
+          ports:
+            - containerPort: 4566
+          env:
+            - name: SERVICES
+              value: dynamodb
+            - name: DEBUG
+              value: "0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: localstack
+  namespace: caas
+spec:
+  selector:
+    app: localstack
+  ports:
+    - port: 4566
+      targetPort: 4566

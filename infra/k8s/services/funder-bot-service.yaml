@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: funder-bot-service
+  namespace: caas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: funder-bot-service
+  template:
+    metadata:
+      labels:
+        app: funder-bot-service
+    spec:
+      containers:
+        - name: funder-bot-service
+          image: caas/funder-bot-service:local
+          imagePullPolicy: Never
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: AUCTION_SERVICE_BASE_URL
+              value: http://auction-service:8080

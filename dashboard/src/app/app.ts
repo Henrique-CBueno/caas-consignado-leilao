@@ -20,7 +20,14 @@ interface AuctionClosedPayload {
   winningRate: number | null;
 }
 
-const NOTIFICATION_GATEWAY_WS_URL = 'ws://localhost:8086/ws';
+// Dev local (ng serve): notification-gateway-service roda direto na porta 8086.
+// Fora de localhost (acessado via NodePort do minikube, Milestone 9): a porta do
+// serviço é a NodePort fixa definida no manifest do notification-gateway-service.
+const LOCAL_DEV_PORT = 8086;
+const CLUSTER_NODE_PORT = 30086;
+const NOTIFICATION_GATEWAY_WS_PORT =
+  window.location.hostname === 'localhost' ? LOCAL_DEV_PORT : CLUSTER_NODE_PORT;
+const NOTIFICATION_GATEWAY_WS_URL = `ws://${window.location.hostname}:${NOTIFICATION_GATEWAY_WS_PORT}/ws`;
 
 @Component({
   imports: [FormsModule],

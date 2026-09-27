@@ -1,0 +1,15 @@
+# Vault em modo dev (single-replica, in-memory, auto-unseal) — mesma
+# simplificação que o docker-compose.dev.yml já assume, não é Vault de produção.
+server:
+  dev:
+    enabled: true
+    devRootToken: "dev-root-token"
+  ha:
+    enabled: false
+  standalone:
+    enabled: true
+  dataStorage:
+    enabled: false
+
+injector:
+  enabled: false
