@@ -1,0 +1,76 @@
+name: caas-consignado-leilao-dev
+
+# Loop rápido de desenvolvimento local (Milestone 0). NÃO é o ambiente demonstrado/testado em CI —
+# esse é o minikube com Helm (ver Milestone 9 e ADR-019). Este compose existe só para iterar rápido
+# antes de cada serviço ganhar seus manifests Kubernetes.
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      # "ruok" vem desabilitado por padrão nessa versão e a imagem não aplica
+      # ZOOKEEPER_4LW_COMMANDS_WHITELIST à zookeeper.properties; "srvr" fica habilitado por padrão.
+      test: ["CMD-SHELL", "echo srvr | ncat localhost 2181 | grep -q Mode"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  localstack:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: rds,dynamodb,cognito-idp,s3
+      DEBUG: 0
+      PERSISTENCE: 1
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  vault:
+    image: hashicorp/vault:1.18
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    healthcheck:
+      # 127.0.0.1, não "localhost": dentro do container "localhost" resolve pra ::1 primeiro
+      # e o listener do Vault não aceita conexão em ::1, só no wildcard IPv4.
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8200/v1/sys/health?standbyok=true"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  localstack-data:
