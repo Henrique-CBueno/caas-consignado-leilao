@@ -1,0 +1,15 @@
+server:
+  # Porta distinta de auction-service (8080 padrão) — os dois rodam ao mesmo
+  # tempo no critério de "pronto" desta milestone (lances chegando ao vivo).
+  port: ${SERVER_PORT:8086}
+
+spring:
+  application:
+    name: notification-gateway-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: notification-gateway-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer

@@ -56,9 +56,10 @@ public class OutboxRelay {
     }
 
     private String topicFor(String eventType) {
-        if ("AuctionClosed".equals(eventType)) {
-            return "auction.closed";
-        }
-        throw new IllegalStateException("Sem tópico Kafka mapeado para o evento '" + eventType + "'");
+        return switch (eventType) {
+            case "AuctionClosed" -> "auction.closed";
+            case "AuctionBidPlaced" -> "auction.bid.placed";
+            default -> throw new IllegalStateException("Sem tópico Kafka mapeado para o evento '" + eventType + "'");
+        };
     }
 }

@@ -5,6 +5,7 @@ import com.caas.auction.domain.Auction;
 import com.caas.auction.domain.AuctionStatus;
 import com.caas.auction.domain.Bid;
 import com.caas.auction.domain.ProposalId;
+import com.caas.events.AuctionBidPlacedEvent;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,14 +42,20 @@ public class AuctionController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Leilão não está aberto para lances");
         }
 
+        Instant receivedAt = Instant.now();
         List<Bid> bids = new ArrayList<>(auction.bids());
-        bids.add(new Bid(request.funderId(), request.rate(), request.termMonths(), Instant.now()));
+        bids.add(new Bid(request.funderId(), request.rate(), request.termMonths(), receivedAt));
 
         Auction updated = new Auction(
             auction.proposalId(), auction.tenantId(), auction.status(), auction.eligibleFunderIds(),
             auction.openedAt(), auction.expiresAt(), bids, auction.winningBid()
         );
-        auctionRepository.save(updated);
+
+        AuctionBidPlacedEvent event = new AuctionBidPlacedEvent(
+            updated.proposalId().value(), updated.tenantId().value(),
+            request.funderId(), request.rate(), request.termMonths(), receivedAt
+        );
+        auctionRepository.saveAndPublish(updated, updated.proposalId().value(), "AuctionBidPlaced", event);
         return toResponse(updated);
     }
 

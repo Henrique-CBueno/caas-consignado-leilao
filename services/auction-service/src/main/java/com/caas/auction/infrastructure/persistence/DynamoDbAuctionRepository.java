@@ -73,8 +73,8 @@ public class DynamoDbAuctionRepository implements AuctionRepository {
     }
 
     @Override
-    public void closeAndPublish(Auction closedAuction, UUID aggregateId, String eventType, Object eventPayload) {
-        Put auctionPut = Put.builder().tableName(TABLE_NAME).item(toItem(closedAuction)).build();
+    public void saveAndPublish(Auction auction, UUID aggregateId, String eventType, Object eventPayload) {
+        Put auctionPut = Put.builder().tableName(TABLE_NAME).item(toItem(auction)).build();
 
         Map<String, AttributeValue> outboxItem = new HashMap<>();
         outboxItem.put("id", AttributeValue.fromS(UUID.randomUUID().toString()));

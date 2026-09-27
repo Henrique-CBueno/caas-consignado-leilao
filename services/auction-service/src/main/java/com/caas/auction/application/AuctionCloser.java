@@ -44,7 +44,7 @@ public class AuctionCloser {
                 winner.map(Bid::rate).orElse(null)
             );
 
-            auctionRepository.closeAndPublish(closed, closed.proposalId().value(), "AuctionClosed", event);
+            auctionRepository.saveAndPublish(closed, closed.proposalId().value(), "AuctionClosed", event);
         }
     }
 }

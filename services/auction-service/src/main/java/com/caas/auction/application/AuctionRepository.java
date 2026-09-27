@@ -16,6 +16,7 @@ public interface AuctionRepository {
     // Sem transação ambiente (@Transactional) como nos serviços com Postgres: o
     // DynamoDB exige coordenar a escrita do agregado + o evento de outbox
     // explicitamente via TransactWriteItems (ver DynamoDbAuctionRepository e
-    // ADR do outbox nesta milestone).
-    void closeAndPublish(Auction closedAuction, UUID aggregateId, String eventType, Object eventPayload);
+    // ADR do outbox nesta milestone). Usado tanto ao fechar o leilão quanto ao
+    // aceitar um lance — mesma mecânica nos dois casos.
+    void saveAndPublish(Auction auction, UUID aggregateId, String eventType, Object eventPayload);
 }

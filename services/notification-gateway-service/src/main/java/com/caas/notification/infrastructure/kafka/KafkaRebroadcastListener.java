@@ -1,0 +1,38 @@
+package com.caas.notification.infrastructure.kafka;
+
+import com.caas.events.AuctionBidPlacedEvent;
+import com.caas.events.AuctionClosedEvent;
+import com.caas.notification.infrastructure.websocket.AuctionNotification;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.UUID;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Component;
+
+@Component
+public class KafkaRebroadcastListener {
+
+    private final SimpMessagingTemplate messagingTemplate;
+    private final ObjectMapper objectMapper;
+
+    public KafkaRebroadcastListener(SimpMessagingTemplate messagingTemplate, ObjectMapper objectMapper) {
+        this.messagingTemplate = messagingTemplate;
+        this.objectMapper = objectMapper;
+    }
+
+    @KafkaListener(topics = "auction.bid.placed")
+    public void onBidPlaced(String payload) throws Exception {
+        AuctionBidPlacedEvent event = objectMapper.readValue(payload, AuctionBidPlacedEvent.class);
+        broadcast(event.proposalId(), new AuctionNotification("BID_PLACED", event));
+    }
+
+    @KafkaListener(topics = "auction.closed")
+    public void onAuctionClosed(String payload) throws Exception {
+        AuctionClosedEvent event = objectMapper.readValue(payload, AuctionClosedEvent.class);
+        broadcast(event.proposalId(), new AuctionNotification("AUCTION_CLOSED", event));
+    }
+
+    private void broadcast(UUID proposalId, AuctionNotification notification) {
+        messagingTemplate.convertAndSend("/topic/auctions/" + proposalId, notification);
+    }
+}

@@ -1,0 +1,33 @@
+<main>
+  <h1>Leilão ao vivo</h1>
+
+  <div class="watch-form">
+    <input
+      type="text"
+      placeholder="ID da proposta"
+      [(ngModel)]="proposalId"
+      name="proposalId"
+    />
+    <button type="button" (click)="watch()">Acompanhar</button>
+    <span class="status" [class.status--connected]="connected()">
+      {{ connected() ? 'conectado' : 'desconectado' }}
+    </span>
+  </div>
+
+  @if (closedAuction(); as closed) {
+    <div class="closed-banner">
+      Leilão fechado: {{ closed.status }}
+      @if (closed.winningFunderId) {
+        — vencedor {{ closed.winningFunderId }} a {{ closed.winningRate }}%
+      }
+    </div>
+  }
+
+  <ul class="bids">
+    @for (bid of bids(); track bid.receivedAt + bid.funderId) {
+      <li>{{ bid.funderId }} — {{ bid.rate }}% / {{ bid.termMonths }}x — {{ bid.receivedAt }}</li>
+    } @empty {
+      <li class="empty">Nenhum lance ainda.</li>
+    }
+  </ul>
+</main>
