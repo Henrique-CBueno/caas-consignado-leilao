@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: api-gateway
+
+app:
+  cognito:
+    jwk-set-uri: ${APP_COGNITO_JWK_SET_URI:https://example.invalid/.well-known/jwks.json}
+  routes:
+    tenant-service-uri: ${APP_ROUTES_TENANT_SERVICE_URI:http://localhost:1}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      cognito-jwks:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+  ratelimiter:
+    instances:
+      cognito-jwks:
+        limit-for-period: 50
+        limit-refresh-period: 1s
+        timeout-duration: 1s

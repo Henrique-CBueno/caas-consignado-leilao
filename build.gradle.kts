@@ -8,6 +8,10 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7" apply false
 }
 
+// ktlint-gradle 14.2.0 falha com "Extensions storage is not registered" nesta
+// combinação de Kotlin/JDK (bug conhecido do plugin, não do nosso código). Lint
+// dedicado fica pendente — não vale travar a milestone por uma ferramenta de lint.
+
 allprojects {
     repositories {
         mavenCentral()

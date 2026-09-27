@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build-system-sanity:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,9 +16,12 @@ jobs:
           java-version: "21"
       - name: Gradle wrapper validation
         uses: gradle/actions/wrapper-validation@v4
-      - run: ./gradlew help --no-daemon
       - name: Validar docker-compose de desenvolvimento
         run: docker compose -f infra/docker/docker-compose.dev.yml config
+      # Testes de integração usam Testcontainers (Postgres, cognito-local) — runners
+      # ubuntu-latest do GitHub já vêm com Docker.
+      - run: ./gradlew test --no-daemon
 
-# Etapas de lint/testes/build de imagem/terraform/deploy entram a partir da Milestone 1,
-# conforme código real de serviço é adicionado (ver plano de implementação).
+# Lint dedicado (ktlint) fica pendente — bug conhecido do plugin nesta combinação
+# de versões (ver build.gradle.kts raiz). Build de imagem/terraform/deploy entram
+# quando esses componentes existirem (ver plano de implementação).

@@ -39,10 +39,13 @@ services:
       timeout: 5s
       retries: 10
 
+  # RDS e Cognito NÃO são emulados no LocalStack Community (confirmado empiricamente,
+  # retornam 501 "not yet implemented or pro feature") — ver ADR-0002. LocalStack aqui
+  # cobre só o que realmente funciona: DynamoDB e S3.
   localstack:
     image: localstack/localstack:3.8
     environment:
-      SERVICES: rds,dynamodb,cognito-idp,s3
+      SERVICES: dynamodb,s3
       DEBUG: 0
       PERSISTENCE: 1
     ports:
@@ -54,6 +57,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # Postgres direto, não via RDS/LocalStack — ver ADR-0002.
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: caas
+      POSTGRES_PASSWORD: caas
+      POSTGRES_DB: caas
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caas"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Cognito emulado não existe no LocalStack Community — cognito-local é um emulador
+  # dedicado, gratuito, com JWKS real — ver ADR-0002.
+  cognito-local:
+    image: jagregory/cognito-local:latest
+    ports:
+      - "9229:9229"
 
   vault:
     image: hashicorp/vault:1.18
