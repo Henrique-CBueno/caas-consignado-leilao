@@ -16,8 +16,12 @@ public class GatewayRoutesConfig {
         @Value("${app.routes.proposal-service-uri}") String proposalServiceUri
     ) {
         return builder.routes()
-            .route("tenant-service", r -> r.path("/tenants/**").uri(tenantServiceUri))
-            .route("proposal-service", r -> r.path("/proposals/**").uri(proposalServiceUri))
+            .route("tenant-service", r -> r.path("/tenants/**")
+                .filters(f -> f.circuitBreaker(c -> c.setName("tenant-service-cb").setFallbackUri("forward:/fallback")))
+                .uri(tenantServiceUri))
+            .route("proposal-service", r -> r.path("/proposals/**")
+                .filters(f -> f.circuitBreaker(c -> c.setName("proposal-service-cb").setFallbackUri("forward:/fallback")))
+                .uri(proposalServiceUri))
             .build();
     }
 }

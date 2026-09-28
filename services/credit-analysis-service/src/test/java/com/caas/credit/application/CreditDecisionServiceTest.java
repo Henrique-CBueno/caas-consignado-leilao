@@ -39,4 +39,17 @@ class CreditDecisionServiceTest {
         assertThat(result.decision()).isEqualTo(Decision.APPROVE);
         assertThat(result.confidence()).isEqualTo(0.6);
     }
+
+    @Test
+    void forcesManualReviewWhenThePortFails() {
+        CreditDecisionPort port = request -> {
+            throw new IllegalStateException("Jev indisponível");
+        };
+        CreditDecisionService service = new CreditDecisionService(port);
+
+        CreditDecisionResult result = service.decide(aRequest);
+
+        assertThat(result.decision()).isEqualTo(Decision.MANUAL_REVIEW);
+        assertThat(result.confidence()).isEqualTo(0.0);
+    }
 }

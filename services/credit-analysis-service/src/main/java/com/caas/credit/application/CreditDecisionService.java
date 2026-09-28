@@ -17,8 +17,17 @@ public class CreditDecisionService {
         this.port = port;
     }
 
+    // Qualquer falha do port (Jev indisponível, circuito aberto, rate limit
+    // estourado) degrada para MANUAL_REVIEW em vez de derrubar o processamento
+    // da mensagem — mesma trava de segurança de baixa confiança, agora também
+    // para indisponibilidade (ver spec da Milestone 11).
     public CreditDecisionResult decide(CreditDecisionRequest request) {
-        CreditDecisionResult result = port.decide(request);
+        CreditDecisionResult result;
+        try {
+            result = port.decide(request);
+        } catch (Exception e) {
+            return new CreditDecisionResult(Decision.MANUAL_REVIEW, 0.0);
+        }
         if (result.confidence() < CONFIDENCE_THRESHOLD) {
             return new CreditDecisionResult(Decision.MANUAL_REVIEW, result.confidence());
         }
