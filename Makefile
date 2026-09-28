@@ -57,7 +57,12 @@ deploy-local:
 	helm upgrade --install kafka bitnami/kafka --version 31.5.0 -n $(K8S_NS) -f $(K8S_DIR)/helm-values/kafka-values.yaml --wait --timeout 5m
 	helm upgrade --install vault hashicorp/vault -n $(K8S_NS) -f $(K8S_DIR)/helm-values/vault-values.yaml --wait --timeout 5m
 	kubectl apply -f $(K8S_DIR)/localstack/ -f $(K8S_DIR)/postgres/ -f $(K8S_DIR)/services/ -f $(K8S_DIR)/dashboard/
-	kubectl wait --for=condition=ready pod --all -n $(K8S_NS) --timeout=180s
+	# 600s, não 180s: runners de CI têm bem menos CPU que uma máquina de
+	# desenvolvedor — 19 pods subindo ao mesmo tempo (5 Postgres, Kafka+ZK,
+	# Vault, LocalStack, 9 serviços de app, dashboard) com pull de imagem a
+	# frio disputam CPU e demoram mais para ficar Ready (achado empírico
+	# na Milestone 10: 180s não bastou no runner do GitHub Actions).
+	kubectl wait --for=condition=ready pod --all -n $(K8S_NS) --timeout=600s
 
 # Publica uma proposta real via HTTP e espera o fluxo feliz completo terminar
 # num desembolso consultável — critério de "pronto" do plano original,
@@ -66,7 +71,7 @@ smoke-test:
 	kubectl create configmap smoke-test-script -n $(K8S_NS) --from-file=smoke-test.sh=$(K8S_DIR)/smoke-test.sh --dry-run=client -o yaml | kubectl apply -f -
 	kubectl delete pod smoke-test -n $(K8S_NS) --ignore-not-found
 	kubectl apply -f $(K8S_DIR)/smoke-test-pod.yaml
-	kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/smoke-test -n $(K8S_NS) --timeout=200s
+	kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/smoke-test -n $(K8S_NS) --timeout=300s
 	kubectl logs -n $(K8S_NS) smoke-test
 
 k8s-down:
