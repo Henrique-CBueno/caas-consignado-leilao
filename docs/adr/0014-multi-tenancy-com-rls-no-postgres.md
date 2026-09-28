@@ -12,4 +12,4 @@ Um esquema compartilhado com coluna `tenant_id` e **Row-Level Security**: `ENABL
 ## Consequências
 - Existe teste de integração de isolamento cross-tenant (uma consulta de um tenant nunca enxerga linhas de outro).
 - O `auction-service` (DynamoDB) não tem RLS: o `tenant_id` é atributo do item, sem isolamento no armazenamento — limitação.
-- O `X-Tenant-Id` é confiado ao gateway, que hoje **não** o deriva do JWT (ADR-0017): a chamada direta a um serviço com header arbitrário é aceita. É a maior lacuna de segurança conhecida.
+- O `X-Tenant-Id` é confiado ao gateway, que o deriva do claim do JWT e descarta o do cliente (ADR-0017); a chamada direta a um serviço interno é barrada por NetworkPolicy (ADR-0024). O smoke test prova o isolamento: o tenant A cria uma proposta, o tenant B recebe 404 para ela e um `X-Tenant-Id` forjado é ignorado.

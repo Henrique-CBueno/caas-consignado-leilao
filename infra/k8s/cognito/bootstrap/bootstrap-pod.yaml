@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cognito-bootstrap
+  namespace: caas
+spec:
+  restartPolicy: Never
+  containers:
+    - name: bootstrap
+      image: curlimages/curl:latest
+      command: ["sh", "/scripts/bootstrap.sh"]
+      volumeMounts:
+        - name: script
+          mountPath: /scripts
+  volumes:
+    - name: script
+      configMap:
+        name: cognito-bootstrap-script
+        defaultMode: 0755

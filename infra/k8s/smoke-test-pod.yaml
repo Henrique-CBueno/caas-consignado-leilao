@@ -12,6 +12,8 @@ spec:
       env:
         - name: CHECK_OBSERVABILITY
           value: "CHECK_OBSERVABILITY_VALUE"
+        - name: VIA_GATEWAY
+          value: "CHECK_OBSERVABILITY_VALUE"
       volumeMounts:
         - name: script
           mountPath: /scripts

@@ -1,18 +1,8 @@
 package com.caas.gateway;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,8 +31,6 @@ class GatewayValidJwtRoutingIntegrationTest {
             .waitingFor(Wait.forLogMessage(".*Cognito Local running.*\\n", 1));
 
     private static final HttpServer DOWNSTREAM = createDownstream();
-    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static String idToken;
 
@@ -69,52 +57,14 @@ class GatewayValidJwtRoutingIntegrationTest {
     }
 
     @DynamicPropertySource
-    static void properties(DynamicPropertyRegistry registry) throws IOException, InterruptedException {
-        String baseUrl = "http://" + cognitoLocal.getHost() + ":" + cognitoLocal.getMappedPort(9229);
+    static void properties(DynamicPropertyRegistry registry) throws Exception {
+        CognitoLocalFixture cognito =
+            new CognitoLocalFixture("http://" + cognitoLocal.getHost() + ":" + cognitoLocal.getMappedPort(9229));
+        idToken = cognito.idTokenFor("tenant-a@example.com", "11111111-1111-1111-1111-111111111111");
 
-        String poolId = cognito(baseUrl, "CreateUserPool", Map.of("PoolName", "test-pool"))
-            .path("UserPool").path("Id").asText();
-
-        String clientId = cognito(baseUrl, "CreateUserPoolClient", Map.of(
-            "UserPoolId", poolId,
-            "ClientName", "test-client",
-            "ExplicitAuthFlows", List.of("ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH")
-        )).path("UserPoolClient").path("ClientId").asText();
-
-        cognito(baseUrl, "AdminCreateUser", Map.of(
-            "UserPoolId", poolId,
-            "Username", "tenant-a@example.com",
-            "TemporaryPassword", "Temp1234!",
-            "MessageAction", "SUPPRESS"
-        ));
-        cognito(baseUrl, "AdminSetUserPassword", Map.of(
-            "UserPoolId", poolId,
-            "Username", "tenant-a@example.com",
-            "Password", "Passw0rd1!",
-            "Permanent", true
-        ));
-        JsonNode auth = cognito(baseUrl, "AdminInitiateAuth", Map.of(
-            "UserPoolId", poolId,
-            "ClientId", clientId,
-            "AuthFlow", "ADMIN_USER_PASSWORD_AUTH",
-            "AuthParameters", Map.of("USERNAME", "tenant-a@example.com", "PASSWORD", "Passw0rd1!")
-        ));
-        idToken = auth.path("AuthenticationResult").path("IdToken").asText();
-
-        registry.add("app.cognito.jwk-set-uri", () -> baseUrl + "/" + poolId + "/.well-known/jwks.json");
+        registry.add("app.cognito.jwk-set-uri", cognito::jwkSetUri);
         registry.add("app.routes.proposal-service-uri", () -> "http://localhost:1");
         registry.add("app.routes.tenant-service-uri", () -> "http://localhost:" + DOWNSTREAM.getAddress().getPort());
-    }
-
-    private static JsonNode cognito(String baseUrl, String target, Map<String, Object> body)
-        throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl))
-            .header("Content-Type", "application/x-amz-json-1.1")
-            .header("X-Amz-Target", "AWSCognitoIdentityProviderService." + target)
-            .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(body)))
-            .build();
-        HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-        return OBJECT_MAPPER.readTree(response.body());
     }
 
     @Autowired

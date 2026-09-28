@@ -32,6 +32,12 @@ spec:
               value: http://tenant-service:8080
             - name: APP_ROUTES_PROPOSAL_SERVICE_URI
               value: http://proposal-service:8080
+            - name: APP_ROUTES_DISBURSEMENT_SERVICE_URI
+              value: http://disbursement-service:8080
+            # Placeholder: o `make deploy-local` troca pelo id real do pool criado no cognito-local
+            # (o id é gerado pelo emulador a cada criação — ver infra/k8s/cognito/bootstrap).
+            - name: APP_COGNITO_JWK_SET_URI
+              value: http://cognito-local:9229/pending/.well-known/jwks.json
           readinessProbe:
             tcpSocket:
               port: 8080

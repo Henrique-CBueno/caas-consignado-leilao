@@ -1,0 +1,39 @@
+# Provedor de identidade emulado (cognito-local) dentro do cluster — só no deploy completo.
+# Dados em memória: cada `make deploy-local` recria o pool via cognito/bootstrap (ADR-0017).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cognito-local
+  namespace: caas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cognito-local
+  template:
+    metadata:
+      labels:
+        app: cognito-local
+    spec:
+      containers:
+        - name: cognito-local
+          image: jagregory/cognito-local:latest
+          ports:
+            - containerPort: 9229
+          readinessProbe:
+            tcpSocket:
+              port: 9229
+            initialDelaySeconds: 3
+            periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cognito-local
+  namespace: caas
+spec:
+  selector:
+    app: cognito-local
+  ports:
+    - port: 9229
+      targetPort: 9229

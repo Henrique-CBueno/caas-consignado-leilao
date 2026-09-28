@@ -25,7 +25,7 @@ Diagramas C4 em Mermaid: [contexto](docs/c4/context.md), [containers](docs/c4/co
 
 | Serviço | Papel |
 |---|---|
-| `api-gateway` | Borda pública: JWT, roteamento, Circuit Breaker, rate limit |
+| `api-gateway` | Borda pública: JWT, tenant derivado do claim, roteamento, Circuit Breaker, rate limit por tenant |
 | `tenant-service` | Tenants (seed) |
 | `proposal-service` | Originação de propostas |
 | `credit-analysis-service` | Decisão de crédito pré e pós-leilão |
@@ -42,7 +42,8 @@ Pré-requisitos: Docker, `minikube`, `kubectl`, `helm`, JDK 21, Node 22 e cerca 
 
 ```
 make deploy-local   # sobe o cluster completo (perfil minikube "caas") e todos os serviços
-make smoke-test     # fluxo feliz + trace no Jaeger + métricas + dashboard do Grafana
+make smoke-test     # fluxo feliz pelo gateway com token real + isolamento de tenants + trace + métricas
+make token          # ID token de um usuário de seed (TENANT_USER=alfa|beta|gama) para chamar o gateway
 make k8s-down       # desliga e limpa o cluster
 ```
 
@@ -65,7 +66,8 @@ make docs-check     # links, ADRs e alvos make da documentação
 
 Ditas com franqueza; cada uma está registrada num ADR:
 
-- **O gateway valida o JWT mas não deriva o `X-Tenant-Id` dele.** Hoje o tenant vem do header enviado pelo chamador; o smoke test chama os serviços direto. É a maior lacuna de segurança ([ADR-0017](docs/adr/0017-autenticacao-com-cognito-emulado.md), [ADR-0014](docs/adr/0014-multi-tenancy-com-rls-no-postgres.md)).
+- **O tenant só é derivado do token para o ID token** (claim `custom:tenant_id`); em produção o access token exigiria uma Lambda de pré-geração de token. O **WebSocket** do `notification-gateway-service` segue público e sem autenticação ([ADR-0017](docs/adr/0017-autenticacao-com-cognito-emulado.md)).
+- **O isolamento de rede depende do CNI Calico** do perfil `caas` (`--cni=calico`); um perfil criado antes dessa mudança precisa ser recriado com `minikube delete -p caas` ([ADR-0024](docs/adr/0024-kubernetes-statefulsets-helm-e-vault-em-modo-dev.md)).
 - **O `cd-minikube` é manual** (`workflow_dispatch`): o runner gratuito do GitHub (2 vCPU / 7 GB) não sustenta o cluster, nem na topologia reduzida ([ADR-0009](docs/adr/0009-topologia-slim-no-ci.md)). O `ci.yml` (testes, `terraform plan` e `docs-check`) roda a cada push.
 - **O `demo-smoke`, que exercita a API real do Jev, depende de um segredo (`OPENROUTER_API_KEY`) e não foi validado sem ele.** Nos testes e no cluster local a decisão de crédito usa um adaptador simulado determinístico ([ADR-0005](docs/adr/0005-integracao-jev-openrouter-e-vault.md)).
 - **Vault em modo dev** (sem persistência, token fixo) e **Jaeger/Prometheus sem persistência** ([ADR-0024](docs/adr/0024-kubernetes-statefulsets-helm-e-vault-em-modo-dev.md), [ADR-0011](docs/adr/0011-observabilidade-traces-e-metricas.md)).

@@ -8,7 +8,7 @@ MINIKUBE_MEMORY ?= 8192
 MINIKUBE_CPUS ?= 6
 MK = minikube -p $(MINIKUBE_PROFILE)
 
-.PHONY: up down ps logs test docs-check deploy-local smoke-test k8s-down
+.PHONY: up down ps logs test docs-check deploy-local smoke-test token k8s-down
 
 up:
 	$(COMPOSE) up -d
@@ -52,7 +52,9 @@ docs-check:
 	sh scripts/docs-check.sh .
 
 deploy-local:
-	$(MK) status -f '{{.Host}}' | grep -q Running || $(MK) start --driver=docker --memory=$(MINIKUBE_MEMORY) --cpus=$(MINIKUBE_CPUS)
+	# Calico: o CNI padrão do driver docker não aplica NetworkPolicy (ADR-0024). Perfil criado antes
+	# desta mudança precisa ser recriado uma vez: minikube delete -p caas
+	$(MK) status -f '{{.Host}}' | grep -q Running || $(MK) start --driver=docker --memory=$(MINIKUBE_MEMORY) --cpus=$(MINIKUBE_CPUS) $(if $(SLIM),,--cni=calico)
 	kubectl config use-context $(MINIKUBE_PROFILE)
 	./gradlew bootJar
 	$(if $(SLIM),,cd dashboard && npx ng build)
@@ -70,7 +72,15 @@ deploy-local:
 	$(if $(SLIM),,kubectl create configmap grafana-datasources -n $(K8S_NS) --from-file=datasources.yml=$(K8S_DIR)/observability/config/grafana-datasources.yml --dry-run=client -o yaml | kubectl apply -f -)
 	$(if $(SLIM),,kubectl create configmap grafana-dashboard-provider -n $(K8S_NS) --from-file=provider.yml=$(K8S_DIR)/observability/config/grafana-dashboard-provider.yml --dry-run=client -o yaml | kubectl apply -f -)
 	$(if $(SLIM),,kubectl create configmap grafana-dashboards -n $(K8S_NS) --from-file=caas-overview.json=$(K8S_DIR)/observability/config/caas-overview.json --dry-run=client -o yaml | kubectl apply -f -)
-	kubectl apply -f $(K8S_DIR)/localstack/ $(foreach p,$(POSTGRES),-f $(K8S_DIR)/postgres/postgres-$(p).yaml) $(foreach s,$(SERVICES),-f $(K8S_DIR)/services/$(s).yaml) $(if $(SLIM),,-f $(K8S_DIR)/dashboard/) $(if $(SLIM),,-f $(K8S_DIR)/observability/)
+	kubectl apply -f $(K8S_DIR)/localstack/ $(foreach p,$(POSTGRES),-f $(K8S_DIR)/postgres/postgres-$(p).yaml) $(foreach s,$(SERVICES),-f $(K8S_DIR)/services/$(s).yaml) $(if $(SLIM),,-f $(K8S_DIR)/dashboard/) $(if $(SLIM),,-f $(K8S_DIR)/observability/) $(if $(SLIM),,-f $(K8S_DIR)/cognito/) $(if $(SLIM),,-f $(K8S_DIR)/network-policies/)
+	# Provedor de identidade: cria pool/client/usuários dos 3 tenants e aponta o JWKS do gateway para o pool real.
+	$(if $(SLIM),,kubectl rollout status deploy/cognito-local -n $(K8S_NS) --timeout=300s)
+	$(if $(SLIM),,kubectl create configmap cognito-bootstrap-script -n $(K8S_NS) --from-file=bootstrap.sh=$(K8S_DIR)/cognito/bootstrap/bootstrap.sh --dry-run=client -o yaml | kubectl apply -f -)
+	$(if $(SLIM),,kubectl delete pod cognito-bootstrap -n $(K8S_NS) --ignore-not-found)
+	$(if $(SLIM),,kubectl apply -f $(K8S_DIR)/cognito/bootstrap/bootstrap-pod.yaml)
+	$(if $(SLIM),,kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/cognito-bootstrap -n $(K8S_NS) --timeout=180s)
+	$(if $(SLIM),,POOL=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^POOL_ID=//p'); kubectl delete pod cognito-bootstrap -n $(K8S_NS); kubectl set env deploy/api-gateway -n $(K8S_NS) APP_COGNITO_JWK_SET_URI=http://cognito-local:9229/$$POOL/.well-known/jwks.json)
+	$(if $(SLIM),,kubectl rollout status deploy/api-gateway -n $(K8S_NS) --timeout=300s)
 	# 600s: runners de CI têm bem menos CPU que uma máquina de desenvolvedor
 	# (2 vCPUs no GitHub Actions) — pods subindo juntos com pull de imagem a
 	# frio disputam CPU e demoram mais para ficar Ready.
@@ -85,6 +95,12 @@ smoke-test:
 	sed 's/CHECK_OBSERVABILITY_VALUE/$(if $(SLIM),0,1)/' $(K8S_DIR)/smoke-test-pod.yaml | kubectl apply -f -
 	kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/smoke-test -n $(K8S_NS) --timeout=420s
 	kubectl logs -n $(K8S_NS) smoke-test
+
+# Imprime um ID token do cognito-local para o usuário de um tenant de seed (alfa, beta ou gama):
+#   TOKEN=$(make -s token) ; make -s token TENANT_USER=beta
+TENANT_USER ?= alfa
+token:
+	@kubectl run cognito-token-$$$$ -n $(K8S_NS) --rm -i -q --restart=Never --image=curlimages/curl:latest --command -- sh -c 'C=http://cognito-local:9229; call() { curl -s -X POST $$C -H "Content-Type: application/x-amz-json-1.1" -H "X-Amz-Target: AWSCognitoIdentityProviderService.$$1" -d "$$2"; }; P=$$(call ListUserPools "{\"MaxResults\":10}" | sed -n "s/.*\"Id\":\"\([^\"]*\)\".*/\1/p"); CL=$$(call ListUserPoolClients "{\"UserPoolId\":\"$$P\",\"MaxResults\":10}" | sed -n "s/.*\"ClientId\":\"\([^\"]*\)\".*/\1/p"); call AdminInitiateAuth "{\"UserPoolId\":\"$$P\",\"ClientId\":\"$$CL\",\"AuthFlow\":\"ADMIN_USER_PASSWORD_AUTH\",\"AuthParameters\":{\"USERNAME\":\"$(TENANT_USER)@caas.local\",\"PASSWORD\":\"Passw0rd1!\"}}" | sed -n "s/.*\"IdToken\":\"\([^\"]*\)\".*/\1/p"'
 
 k8s-down:
 	-helm uninstall kafka vault -n $(K8S_NS)

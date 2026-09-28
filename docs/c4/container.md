@@ -6,12 +6,11 @@ Visão de containers no estilo C4, desenhada como fluxograma por legibilidade (o
 flowchart LR
     analista(["Analista do banco"])
     jev["Jev / OpenRouter<br/>(externo)"]
-    cognito["cognito-local<br/>(JWKS)"]
 
     subgraph k8s["Kubernetes (minikube, perfil caas)"]
         direction LR
         dashboard["Dashboard<br/>Angular + STOMP"]
-        gateway["api-gateway<br/>JWT, roteamento,<br/>Circuit Breaker, rate limit"]
+        gateway["api-gateway<br/>JWT, tenant do claim,<br/>Circuit Breaker, rate limit por tenant"]
         tenant["tenant-service"]
         proposal["proposal-service"]
         credit["credit-analysis-service"]
@@ -25,6 +24,7 @@ flowchart LR
         pg[("Postgres por serviço<br/>RLS")]
         dynamo[("DynamoDB<br/>LocalStack")]
         vault["Vault (modo dev)"]
+        cognito["cognito-local<br/>usuários dos 3 tenants de seed"]
         obs["Jaeger, Prometheus, Grafana"]
     end
 
@@ -34,6 +34,7 @@ flowchart LR
     gateway -- JWKS --> cognito
     gateway -- "/tenants/**" --> tenant
     gateway -- "/proposals/**" --> proposal
+    gateway -- "/disbursements/**" --> disb
 
     proposal -. "proposal.created" .-> kafka
     kafka -. "proposal.created<br/>auction.closed" .-> credit
@@ -57,4 +58,4 @@ flowchart LR
     tenant --> pg
 ```
 
-Todos os serviços exportam traces (OTLP) para o Jaeger e expõem métricas ao Prometheus (`obs`, ADR-0011); as setas foram omitidas para não poluir. Decomposição e dados por serviço: ADR-0012 e ADR-0016. O `credit-analysis-service` revalida o crédito quando o leilão fecha (etapa `POST_AUCTION`, ADR-0020).
+As NetworkPolicies (Calico) só admitem tráfego para `tenant-service`, `proposal-service` e `disbursement-service` vindo do `api-gateway`, e para o `auction-service` vindo do `funder-bot-service` ([ADR-0024](../adr/0024-kubernetes-statefulsets-helm-e-vault-em-modo-dev.md)); o gateway injeta o `X-Tenant-Id` a partir do claim do token ([ADR-0017](../adr/0017-autenticacao-com-cognito-emulado.md)). Todos os serviços exportam traces (OTLP) para o Jaeger e expõem métricas ao Prometheus (`obs`, ADR-0011); as setas foram omitidas para não poluir. Decomposição e dados por serviço: ADR-0012 e ADR-0016. O `credit-analysis-service` revalida o crédito quando o leilão fecha (etapa `POST_AUCTION`, ADR-0020).

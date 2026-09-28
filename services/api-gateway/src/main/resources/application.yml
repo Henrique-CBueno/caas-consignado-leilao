@@ -12,6 +12,7 @@ app:
   routes:
     tenant-service-uri: ${APP_ROUTES_TENANT_SERVICE_URI:http://localhost:1}
     proposal-service-uri: ${APP_ROUTES_PROPOSAL_SERVICE_URI:http://localhost:1}
+    disbursement-service-uri: ${APP_ROUTES_DISBURSEMENT_SERVICE_URI:http://localhost:1}
 
 resilience4j:
   circuitbreaker:
@@ -31,6 +32,11 @@ resilience4j:
         minimum-number-of-calls: 5
         failure-rate-threshold: 50
         wait-duration-in-open-state: 5s
+      disbursement-service-cb:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
   ratelimiter:
     instances:
       cognito-jwks:
@@ -38,10 +44,10 @@ resilience4j:
         limit-refresh-period: 1s
         timeout-duration: 1s
     configs:
-      # Config base para as instâncias de rate limit por identidade, criadas
-      # dinamicamente em runtime (uma por claim "sub" do JWT) — ver
-      # PerIdentityRateLimitFilter.
-      per-identity:
+      # Config base para as instâncias de rate limit por tenant, criadas
+      # dinamicamente em runtime (uma por claim custom:tenant_id do JWT) — ver
+      # PerTenantRateLimitFilter.
+      per-tenant:
         limit-for-period: 15
         limit-refresh-period: 10s
         timeout-duration: 0s

@@ -14,11 +14,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-// Rate limit por identidade autenticada (claim "sub" do JWT já validado, nunca um
-// header não confiável) — ver spec da Milestone 11 sobre por que não é por
-// tenant de verdade ainda (o JWT do cognito-local não carrega esse claim hoje).
-// Instâncias nomeadas dinamicamente no RateLimiterRegistry, uma por identidade,
-// usando a config "per-identity" como base — mesmo padrão de registry nomeado já
+// Rate limit por tenant (claim custom:tenant_id do JWT já validado, nunca um header
+// não confiável — ADR-0017/0021). O TenantHeaderFilter roda antes e barra tokens sem
+// tenant válido, então aqui o claim sempre existe.
+// Instâncias nomeadas dinamicamente no RateLimiterRegistry, uma por tenant,
+// usando a config "per-tenant" como base — mesmo padrão de registry nomeado já
 // usado em jev-openrouter/cognito-jwks, aplicado a chaves que só existem em runtime.
 //
 // Sem fallback para "sem autenticação": SecurityConfig já exige
@@ -27,13 +27,13 @@ import reactor.core.publisher.Mono;
 // ambíguo: um Mono<Void> nunca emite valor, então não dá pra distinguir "vazio
 // porque não achou identidade" de "vazio porque o trabalho terminou sem erro".)
 @Component
-public class PerIdentityRateLimitFilter implements GlobalFilter, Ordered {
+public class PerTenantRateLimitFilter implements GlobalFilter, Ordered {
 
-    private static final String BASE_CONFIG_NAME = "per-identity";
+    private static final String BASE_CONFIG_NAME = "per-tenant";
 
     private final RateLimiterRegistry rateLimiterRegistry;
 
-    public PerIdentityRateLimitFilter(RateLimiterRegistry rateLimiterRegistry) {
+    public PerTenantRateLimitFilter(RateLimiterRegistry rateLimiterRegistry) {
         this.rateLimiterRegistry = rateLimiterRegistry;
     }
 
@@ -41,12 +41,12 @@ public class PerIdentityRateLimitFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         return ReactiveSecurityContextHolder.getContext()
             .map(context -> (JwtAuthenticationToken) context.getAuthentication())
-            .map(token -> token.getToken().getSubject())
-            .flatMap(identity -> applyRateLimit(identity, exchange, chain));
+            .map(token -> token.getToken().getClaimAsString(TenantHeaderFilter.TENANT_CLAIM))
+            .flatMap(tenant -> applyRateLimit(tenant, exchange, chain));
     }
 
-    private Mono<Void> applyRateLimit(String identity, ServerWebExchange exchange, GatewayFilterChain chain) {
-        RateLimiter limiter = rateLimiterRegistry.rateLimiter(identity, BASE_CONFIG_NAME);
+    private Mono<Void> applyRateLimit(String tenant, ServerWebExchange exchange, GatewayFilterChain chain) {
+        RateLimiter limiter = rateLimiterRegistry.rateLimiter(tenant, BASE_CONFIG_NAME);
         return chain.filter(exchange)
             .transformDeferred(RateLimiterOperator.of(limiter))
             .onErrorResume(RequestNotPermitted.class, e -> {

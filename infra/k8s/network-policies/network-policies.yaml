@@ -1,0 +1,49 @@
+# Só o gateway alcança os serviços que confiam em X-Tenant-Id (ADR-0014/0017): sem isso, quem chega
+# a um pod interno escolheria o tenant. Exigem um CNI que aplique NetworkPolicy (Calico, ver Makefile).
+# Serviços não selecionados por nenhuma política seguem abertos (Kafka, Postgres, cognito-local etc.).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: routed-services-only-from-gateway
+  namespace: caas
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [tenant-service, proposal-service, disbursement-service]
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# O leilão recebe lances do bot (POST /auctions/{id}/bids) e a coleta do Prometheus.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auction-only-from-bot
+  namespace: caas
+spec:
+  podSelector:
+    matchLabels:
+      app: auction-service
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: funder-bot-service
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080

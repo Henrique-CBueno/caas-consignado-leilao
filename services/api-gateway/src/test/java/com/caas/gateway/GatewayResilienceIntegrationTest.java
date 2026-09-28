@@ -2,15 +2,6 @@ package com.caas.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,61 +30,24 @@ class GatewayResilienceIntegrationTest {
             .withExposedPorts(9229)
             .waitingFor(Wait.forLogMessage(".*Cognito Local running.*\\n", 1));
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-    // Identidades separadas por teste para não uma consumir a cota de rate limit
-    // da outra — o rate limiter é global à identidade, não por rota.
+    // Tenants separados por teste para um não consumir a cota de rate limit do
+    // outro — o rate limiter é por tenant, não por rota (ADR-0021).
     private static String tenantAToken;
     private static String tenantBToken;
     private static String tenantCToken;
 
     @DynamicPropertySource
-    static void properties(DynamicPropertyRegistry registry) throws IOException, InterruptedException {
-        String baseUrl = "http://" + cognitoLocal.getHost() + ":" + cognitoLocal.getMappedPort(9229);
+    static void properties(DynamicPropertyRegistry registry) throws Exception {
+        CognitoLocalFixture cognito =
+            new CognitoLocalFixture("http://" + cognitoLocal.getHost() + ":" + cognitoLocal.getMappedPort(9229));
 
-        String poolId = cognito(baseUrl, "CreateUserPool", Map.of("PoolName", "test-pool"))
-            .path("UserPool").path("Id").asText();
-        String clientId = cognito(baseUrl, "CreateUserPoolClient", Map.of(
-            "UserPoolId", poolId,
-            "ClientName", "test-client",
-            "ExplicitAuthFlows", List.of("ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH")
-        )).path("UserPoolClient").path("ClientId").asText();
+        tenantAToken = cognito.idTokenFor("tenant-a@example.com", "11111111-1111-1111-1111-111111111111");
+        tenantBToken = cognito.idTokenFor("tenant-b@example.com", "22222222-2222-2222-2222-222222222222");
+        tenantCToken = cognito.idTokenFor("tenant-c@example.com", "33333333-3333-3333-3333-333333333333");
 
-        tenantAToken = createUserAndGetToken(baseUrl, poolId, clientId, "tenant-a@example.com");
-        tenantBToken = createUserAndGetToken(baseUrl, poolId, clientId, "tenant-b@example.com");
-        tenantCToken = createUserAndGetToken(baseUrl, poolId, clientId, "tenant-c@example.com");
-
-        registry.add("app.cognito.jwk-set-uri", () -> baseUrl + "/" + poolId + "/.well-known/jwks.json");
+        registry.add("app.cognito.jwk-set-uri", cognito::jwkSetUri);
         registry.add("app.routes.tenant-service-uri", () -> "http://localhost:1");
         registry.add("app.routes.proposal-service-uri", () -> "http://localhost:1");
-    }
-
-    private static String createUserAndGetToken(String baseUrl, String poolId, String clientId, String username)
-        throws IOException, InterruptedException {
-        cognito(baseUrl, "AdminCreateUser", Map.of(
-            "UserPoolId", poolId, "Username", username,
-            "TemporaryPassword", "Temp1234!", "MessageAction", "SUPPRESS"
-        ));
-        cognito(baseUrl, "AdminSetUserPassword", Map.of(
-            "UserPoolId", poolId, "Username", username, "Password", "Passw0rd1!", "Permanent", true
-        ));
-        JsonNode auth = cognito(baseUrl, "AdminInitiateAuth", Map.of(
-            "UserPoolId", poolId, "ClientId", clientId, "AuthFlow", "ADMIN_USER_PASSWORD_AUTH",
-            "AuthParameters", Map.of("USERNAME", username, "PASSWORD", "Passw0rd1!")
-        ));
-        return auth.path("AuthenticationResult").path("IdToken").asText();
-    }
-
-    private static JsonNode cognito(String baseUrl, String target, Map<String, Object> body)
-        throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl))
-            .header("Content-Type", "application/x-amz-json-1.1")
-            .header("X-Amz-Target", "AWSCognitoIdentityProviderService." + target)
-            .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(body)))
-            .build();
-        HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-        return OBJECT_MAPPER.readTree(response.body());
     }
 
     @Autowired
@@ -111,8 +65,8 @@ class GatewayResilienceIntegrationTest {
     @Test
     void afterRepeatedDownstreamFailuresTheRouteCircuitOpensAndFailsFast() {
         HttpStatus lastStatus = null;
-        // minimum-number-of-calls é 5; bem dentro da cota de rate limit (15) desta
-        // identidade isolada, então o Circuit Breaker é o único fator em jogo aqui.
+        // minimum-number-of-calls é 5; bem dentro da cota de rate limit (15) deste
+        // tenant isolado, então o Circuit Breaker é o único fator em jogo aqui.
         for (int i = 0; i < 9; i++) {
             lastStatus = statusOf("/tenants/00000000-0000-0000-0000-000000000000", tenantCToken);
         }
@@ -121,9 +75,9 @@ class GatewayResilienceIntegrationTest {
     }
 
     @Test
-    void aRateLimitedIdentityDoesNotAffectAnotherIdentity() {
+    void aRateLimitedTenantDoesNotAffectAnotherTenant() {
         HttpStatus lastStatus = null;
-        // Bem além da cota de rate limit (15) desta identidade — as últimas
+        // Bem além da cota de rate limit (15) deste tenant — as últimas
         // chamadas devem ser barradas pelo rate limiter, não pelo Circuit Breaker.
         for (int i = 0; i < 20; i++) {
             lastStatus = statusOf("/proposals/00000000-0000-0000-0000-000000000000", tenantAToken);

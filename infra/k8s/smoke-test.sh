@@ -9,19 +9,73 @@ TRACE_ID=$(cat /proc/sys/kernel/random/uuid | tr -d '-')
 SPAN_ID=$(cat /proc/sys/kernel/random/uuid | tr -d '-' | cut -c1-16)
 echo "trace: $TRACE_ID"
 
-CREATE_RESPONSE=$(curl -s -X POST http://proposal-service:8080/proposals \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-Id: $TENANT_ID" \
-  -H "traceparent: 00-$TRACE_ID-$SPAN_ID-01" \
-  -d '{"borrowerId":"59","requestedAmount":5000.00,"termMonths":24}')
+fail() { echo "$1"; exit 1; }
+PROPOSAL_JSON='{"borrowerId":"59","requestedAmount":5000.00,"termMonths":24}'
+
+if [ "$VIA_GATEWAY" = "1" ]; then
+  # Deploy completo: tudo pela borda pública, com tokens reais do cognito-local (ADR-0017).
+  COGNITO=http://cognito-local:9229
+  GW=http://api-gateway:8080
+  TENANT_B=22222222-2222-2222-2222-222222222222
+  cognito() {
+    curl -s -X POST "$COGNITO" -H 'Content-Type: application/x-amz-json-1.1' \
+      -H "X-Amz-Target: AWSCognitoIdentityProviderService.$1" -d "$2"
+  }
+  # O emulador só tem o pool "caas" (criado pelo bootstrap): o único "Id" da resposta é o do pool.
+  POOL_ID=$(cognito ListUserPools '{"MaxResults":10}' | sed -n 's/.*"Id":"\([^"]*\)".*/\1/p')
+  CLIENT_ID=$(cognito ListUserPoolClients "{\"UserPoolId\":\"$POOL_ID\",\"MaxResults\":10}" | sed -n 's/.*"ClientId":"\([^"]*\)".*/\1/p')
+  token_for() {
+    cognito AdminInitiateAuth "{\"UserPoolId\":\"$POOL_ID\",\"ClientId\":\"$CLIENT_ID\",\"AuthFlow\":\"ADMIN_USER_PASSWORD_AUTH\",\"AuthParameters\":{\"USERNAME\":\"$1\",\"PASSWORD\":\"Passw0rd1!\"}}" \
+      | sed -n 's/.*"IdToken":"\([^"]*\)".*/\1/p'
+  }
+  TOKEN_A=$(token_for alfa@caas.local)
+  TOKEN_B=$(token_for beta@caas.local)
+  [ -n "$TOKEN_A" ] && [ -n "$TOKEN_B" ] || fail "AUTH FAILED: sem tokens do cognito-local"
+  echo "tokens obtidos (tenants alfa e beta)"
+
+  # Cria como tenant A enviando um X-Tenant-Id forjado (tenant B): o gateway deve ignorá-lo.
+  CREATE_RESPONSE=$(curl -s -X POST "$GW/proposals" \
+    -H "Authorization: Bearer $TOKEN_A" -H "X-Tenant-Id: $TENANT_B" \
+    -H "Content-Type: application/json" -H "traceparent: 00-$TRACE_ID-$SPAN_ID-01" -d "$PROPOSAL_JSON")
+else
+  CREATE_RESPONSE=$(curl -s -X POST http://proposal-service:8080/proposals \
+    -H "Content-Type: application/json" \
+    -H "X-Tenant-Id: $TENANT_ID" \
+    -H "traceparent: 00-$TRACE_ID-$SPAN_ID-01" \
+    -d "$PROPOSAL_JSON")
+fi
 echo "proposal created: $CREATE_RESPONSE"
 
 PROPOSAL_ID=$(echo "$CREATE_RESPONSE" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
 echo "proposalId: $PROPOSAL_ID"
+[ -n "$PROPOSAL_ID" ] || fail "FALHA: proposta não criada"
+
+if [ "$VIA_GATEWAY" = "1" ]; then
+  # Isolamento: o dono (A) lê; o tenant B não enxerga (RLS). Se o header forjado valesse, A receberia 404.
+  A_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$GW/proposals/$PROPOSAL_ID" -H "Authorization: Bearer $TOKEN_A")
+  B_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$GW/proposals/$PROPOSAL_ID" -H "Authorization: Bearer $TOKEN_B")
+  [ "$A_STATUS" = "200" ] || fail "ISOLAMENTO FALHOU: dono recebeu $A_STATUS (header forjado valeu?)"
+  [ "$B_STATUS" = "404" ] || fail "ISOLAMENTO FALHOU: outro tenant recebeu $B_STATUS (esperado 404)"
+  echo "ISOLAMENTO OK: header forjado ignorado; dono=$A_STATUS, outro tenant=$B_STATUS"
+
+  NOTOKEN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$GW/proposals/$PROPOSAL_ID")
+  [ "$NOTOKEN_STATUS" = "401" ] || fail "AUTH FALHOU: sem token recebeu $NOTOKEN_STATUS (esperado 401)"
+  echo "AUTH OK: sem token = 401"
+
+  # Este pod não é o gateway: a NetworkPolicy deve barrar o acesso direto ao serviço interno.
+  if curl -s --max-time 5 -o /dev/null http://proposal-service:8080/actuator/health; then
+    fail "NETPOLICY FALHOU: pod fora do gateway alcançou o proposal-service"
+  fi
+  echo "NETPOLICY OK: acesso direto ao proposal-service bloqueado"
+fi
 
 echo "waiting for disbursement..."
 for i in $(seq 1 60); do
-  RESPONSE=$(curl -s -o /tmp/body -w "%{http_code}" "http://disbursement-service:8080/disbursements/$PROPOSAL_ID" -H "X-Tenant-Id: $TENANT_ID")
+  if [ "$VIA_GATEWAY" = "1" ]; then
+    RESPONSE=$(curl -s -o /tmp/body -w "%{http_code}" "$GW/disbursements/$PROPOSAL_ID" -H "Authorization: Bearer $TOKEN_A")
+  else
+    RESPONSE=$(curl -s -o /tmp/body -w "%{http_code}" "http://disbursement-service:8080/disbursements/$PROPOSAL_ID" -H "X-Tenant-Id: $TENANT_ID")
+  fi
   if [ "$RESPONSE" = "200" ]; then
     echo "DISBURSEMENT FOUND:"
     cat /tmp/body

@@ -2,7 +2,7 @@
 
 Roteiro para apresentar o sistema ao vivo (~15 min). **Todos os comandos abaixo foram executados de verdade** num cluster real (perfil minikube `caas`, 8 GiB), com as saídas observadas descritas em cada passo. Os tempos são aproximados.
 
-Pré-requisitos: Docker, `minikube`, `kubectl`, `helm`, JDK 21 e Node 22; cerca de 8 GiB livres. Em todo o roteiro, `IP` é o endereço do cluster:
+Pré-requisitos: Docker, `minikube`, `kubectl`, `helm`, JDK 21 e Node 22; cerca de 8 GiB livres. O perfil `caas` sobe com o CNI Calico (necessário para NetworkPolicy); se ele foi criado antes dessa mudança, recrie-o uma vez com `minikube delete -p caas`. Em todo o roteiro, `IP` é o endereço do cluster:
 
 ```
 IP=$(minikube -p caas ip)
@@ -14,7 +14,7 @@ IP=$(minikube -p caas ip)
 make deploy-local
 ```
 
-Compila os 9 serviços e o dashboard, sobe o minikube (perfil `caas`), instala Kafka + Zookeeper e Vault por Helm e aplica Postgres (um StatefulSet por serviço), LocalStack, os serviços e o stack de observabilidade. Termina quando todos os pods estão `Ready` (22 pods `1/1`).
+Compila os 9 serviços e o dashboard, sobe o minikube (perfil `caas`), instala Kafka + Zookeeper e Vault por Helm e aplica Postgres (um StatefulSet por serviço), LocalStack, os serviços, o stack de observabilidade, um `cognito-local` (com usuários `alfa@`, `beta@` e `gama@caas.local`, um por tenant de seed) e as NetworkPolicies. Termina quando todos os pods estão `Ready` (23 pods `1/1`).
 
 ## 2. Fluxo feliz completo, com prova de observabilidade (~1 min)
 
@@ -22,35 +22,65 @@ Compila os 9 serviços e o dashboard, sobe o minikube (perfil `caas`), instala K
 make smoke-test
 ```
 
-Cria uma proposta e espera o desembolso. Saída esperada (resumida):
+Obtém tokens reais do `cognito-local`, cria uma proposta **pelo gateway** e espera o desembolso, verificando no caminho o isolamento entre tenants. Saída esperada (resumida):
 
 ```
+tokens obtidos (tenants alfa e beta)
 proposal created: {"id":"…","borrowerId":"59","requestedAmount":5000.00,"termMonths":24,"status":"PENDING_CREDIT_ANALYSIS"}
+ISOLAMENTO OK: header forjado ignorado; dono=200, outro tenant=404
+AUTH OK: sem token = 401
+NETPOLICY OK: acesso direto ao proposal-service bloqueado
 DISBURSEMENT FOUND:
 {"proposalId":"…","funderId":"funder-2","amount":5000.00,"status":"DISBURSED",…}
-TRACE OK (…): auction-service contract-service credit-analysis-service disbursement-service funder-bot-service notification-gateway-service proposal-service
+TRACE OK (…): api-gateway auction-service contract-service credit-analysis-service disbursement-service funder-bot-service notification-gateway-service proposal-service
 PROMETHEUS OK: 9 alvos up
 GRAFANA OK: dashboard 'CaaS Overview' provisionado
 ```
 
-O que isso prova: a proposta atravessou todos os serviços por eventos, o leilão escolheu um vencedor (`funder-2`, ver [ADR-0018](adr/0018-mecanismo-de-leilao-e-desempate.md)), o contrato foi assinado e o desembolso ficou consultável; e **um único trace** cobre a cadeia inteira.
+O que isso prova: a proposta entrou pela borda pública autenticada, atravessou todos os serviços por eventos, o leilão escolheu um vencedor (`funder-2`, ver [ADR-0018](adr/0018-mecanismo-de-leilao-e-desempate.md)), o contrato foi assinado e o desembolso ficou consultável; e **um único trace** cobre a cadeia inteira.
 
-## 3. Leilão ao vivo no dashboard (~2 min)
+## 3. Isolamento entre tenants (~2 min)
 
-Os bots dão lance de 0,5 a 3 s depois de o leilão abrir, rápido demais para abrir a tela. Para a demonstração, atrase os bots e exponha o `proposal-service`:
+O tenant vem do **claim `custom:tenant_id` do token**, nunca de um header do cliente ([ADR-0017](adr/0017-autenticacao-com-cognito-emulado.md)). `make token` emite um ID token do usuário de um tenant de seed (`TENANT_USER=alfa|beta|gama`):
+
+```
+TOKEN_A=$(make -s token)                        # alfa@caas.local, Banco Alfa
+TOKEN_B=$(make -s token TENANT_USER=beta)       # beta@caas.local, Banco Beta
+
+# Alfa cria uma proposta tentando forjar o tenant de Beta no header:
+ID=$(curl -s -X POST http://$IP:30080/proposals \
+  -H "Authorization: Bearer $TOKEN_A" -H 'X-Tenant-Id: 22222222-2222-2222-2222-222222222222' \
+  -H 'Content-Type: application/json' -d '{"borrowerId":"59","requestedAmount":5000.00,"termMonths":24}' \
+  | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+
+curl -s -o /dev/null -w '%{http_code}\n' http://$IP:30080/proposals/$ID -H "Authorization: Bearer $TOKEN_A"   # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://$IP:30080/proposals/$ID -H "Authorization: Bearer $TOKEN_B"   # 404
+curl -s -o /dev/null -w '%{http_code}\n' http://$IP:30080/proposals/$ID                                        # 401
+```
+
+Saída observada: `200` (o dono lê — o header forjado foi ignorado, senão receberia 404), `404` (o outro tenant não enxerga a proposta, pela RLS) e `401` (sem token). O acesso direto ao serviço interno, contornando o gateway, é barrado pela NetworkPolicy:
+
+```
+kubectl run probe -n caas --rm -i --restart=Never --image=curlimages/curl:latest --command -- \
+  sh -c 'curl -s --max-time 5 http://proposal-service:8080/actuator/health || echo "BLOQUEADO (sem resposta em 5s)"'
+```
+
+Saída observada: `BLOQUEADO (sem resposta em 5s)`. (Um pod com o label do gateway, ou o próprio gateway, alcança o serviço normalmente — é o que o fluxo feliz faz.)
+
+## 4. Leilão ao vivo no dashboard (~2 min)
+
+Os bots dão lance de 0,5 a 3 s depois de o leilão abrir, rápido demais para abrir a tela. Para a demonstração, atrase os bots:
 
 ```
 kubectl set env deploy/funder-bot-service -n caas APP_FUNDER_BOT_MIN_DELAY_MS=10000 APP_FUNDER_BOT_MAX_DELAY_MS=25000
 kubectl rollout status deploy/funder-bot-service -n caas
-kubectl port-forward -n caas svc/proposal-service 8081:8080
 ```
 
-Em outro terminal, abra `http://$IP:30090` (dashboard Angular) e crie uma proposta:
+Abra `http://$IP:30090` (dashboard Angular) e crie uma proposta pelo gateway:
 
 ```
-curl -s -X POST localhost:8081/proposals \
-  -H 'Content-Type: application/json' \
-  -H 'X-Tenant-Id: 11111111-1111-1111-1111-111111111111' \
+curl -s -X POST http://$IP:30080/proposals \
+  -H "Authorization: Bearer $(make -s token)" -H 'Content-Type: application/json' \
   -d '{"borrowerId":"59","requestedAmount":5000.00,"termMonths":24}'
 ```
 
@@ -74,19 +104,19 @@ Ao terminar, restaure os bots:
 kubectl set env deploy/funder-bot-service -n caas APP_FUNDER_BOT_MIN_DELAY_MS- APP_FUNDER_BOT_MAX_DELAY_MS-
 ```
 
-## 4. O trace no Jaeger (~2 min)
+## 5. O trace no Jaeger (~2 min)
 
 Abra `http://$IP:30686`, escolha o serviço `proposal-service` e abra o trace de `http post /proposals`. Ele mostra uma árvore conectada de **7 serviços e 39 spans (profundidade 17)** — do `POST` inicial, passando pelo outbox (`outbox-relay ProposalCreated`), pelos consumidores Kafka, pelos lances dos bots por HTTP e pelo fechamento do leilão, até o desembolso. Como a raiz é a requisição, os saltos assíncronos ficam sob ela graças ao `traceparent` guardado no outbox ([ADR-0011](adr/0011-observabilidade-traces-e-metricas.md)).
 
 ![Trace único no Jaeger](img/jaeger-trace.png)
 
-## 5. Métricas no Grafana (~1 min)
+## 6. Métricas no Grafana (~1 min)
 
 Abra `http://$IP:30300/d/caas-overview` (acesso anônimo somente leitura): taxa e latência p95 de HTTP, heap por serviço, mensagens Kafka publicadas e consumidas, e o estado dos Circuit Breakers.
 
 ![Dashboard do Grafana](img/grafana-dashboard.png)
 
-## 6. Degradação graciosa: Jev indisponível (~2 min)
+## 7. Degradação graciosa: Jev indisponível (~2 min)
 
 Aponte a decisão de crédito para o provedor Jev com uma URL inalcançável (simula a queda do provedor):
 
@@ -95,7 +125,7 @@ kubectl set env deploy/credit-analysis-service -n caas APP_CREDIT_DECISION_PROVI
 kubectl rollout status deploy/credit-analysis-service -n caas
 ```
 
-Crie uma proposta (comando do passo 3) e leia a decisão publicada no Kafka:
+Crie uma proposta (comando do passo 4) e leia a decisão publicada no Kafka:
 
 ```
 kubectl exec -n caas kafka-broker-0 -- /opt/bitnami/kafka/bin/kafka-console-consumer.sh \
@@ -110,7 +140,7 @@ kubectl set env deploy/credit-analysis-service -n caas APP_CREDIT_DECISION_PROVI
 
 A chamada real ao Jev (com `OPENROUTER_API_KEY`) é o `demo-smoke` do CI e não faz parte deste roteiro ([ADR-0005](adr/0005-integracao-jev-openrouter-e-vault.md)).
 
-## 7. Encerrar
+## 8. Encerrar
 
 ```
 make k8s-down
