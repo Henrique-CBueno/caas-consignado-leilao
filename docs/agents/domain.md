@@ -4,7 +4,7 @@ Como as skills de engenharia devem consumir a documentação de domínio deste r
 
 ## Antes de explorar, ler isto
 
-- **`CONTEXT.md`** na raiz do repo (ainda não existe — criado sob demanda pela skill `domain-modeling` quando termos/decisões forem resolvidos; não crie antecipadamente).
+- **`CONTEXT.md`** na raiz do repo (glossário do domínio; mantido pela skill `domain-modeling`).
 - **`docs/adr/`**: ler as ADRs que tocam a área em que você vai trabalhar.
 
 Se algum desses arquivos não existir, **prossiga em silêncio**. Não sinalize a ausência; não sugira criá-los antecipadamente.

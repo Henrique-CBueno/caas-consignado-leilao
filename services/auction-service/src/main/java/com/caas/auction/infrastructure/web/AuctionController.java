@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +34,11 @@ public class AuctionController {
         this.auctionRepository = auctionRepository;
     }
 
+    @Operation(summary = "Registra um lance num leilão aberto", description = "Uso interno (funder-bot-service). Publica AuctionBidPlaced via outbox.", responses = {
+        @ApiResponse(responseCode = "200", description = "Lance aceito; devolve o leilão atualizado"),
+        @ApiResponse(responseCode = "404", description = "Leilão inexistente", content = @io.swagger.v3.oas.annotations.media.Content),
+        @ApiResponse(responseCode = "409", description = "Leilão já fechado ou expirado", content = @io.swagger.v3.oas.annotations.media.Content)
+    })
     @PostMapping("/auctions/{proposalId}/bids")
     public AuctionResponse placeBid(@PathVariable UUID proposalId, @RequestBody BidRequest request) {
         Auction auction = auctionRepository.findByProposalId(new ProposalId(proposalId));
@@ -59,6 +66,10 @@ public class AuctionController {
         return toResponse(updated);
     }
 
+    @Operation(summary = "Consulta um leilão pelo id da proposta", responses = {
+        @ApiResponse(responseCode = "200", description = "Leilão encontrado"),
+        @ApiResponse(responseCode = "404", description = "Leilão inexistente", content = @io.swagger.v3.oas.annotations.media.Content)
+    })
     @GetMapping("/auctions/{proposalId}")
     public ResponseEntity<AuctionResponse> getAuction(@PathVariable UUID proposalId) {
         Auction auction = auctionRepository.findByProposalId(new ProposalId(proposalId));

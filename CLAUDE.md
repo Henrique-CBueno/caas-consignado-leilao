@@ -10,4 +10,8 @@ Issues e specs vivem como GitHub issues em [Henrique-CBueno/caas-consignado-leil
 
 ### Domain docs
 
-Layout single-context: um `CONTEXT.md` (criado sob demanda) + `docs/adr/` na raiz. Ver `docs/agents/domain.md`.
+Layout single-context: `CONTEXT.md` (glossário do domínio) + `docs/adr/` (índice em `docs/adr/README.md`) na raiz. Ver `docs/agents/domain.md`.
+
+### Documentação
+
+`make docs-check` valida links, estrutura dos ADRs e alvos `make` citados; `make test` cobre a deriva das OpenAPI em `docs/openapi/` (regenerar com `./gradlew contractTest -Dopenapi.update=true`). Diagramas em `docs/c4/`, roteiro de demo em `docs/demo.md`.

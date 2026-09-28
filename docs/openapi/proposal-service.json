@@ -1,0 +1,129 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "proposal-service",
+    "description" : "Originação de propostas de crédito consignado. Publica ProposalCreated no Kafka via outbox transacional.",
+    "version" : "1.0"
+  },
+  "paths" : {
+    "/proposals" : {
+      "post" : {
+        "tags" : [ "proposal-controller" ],
+        "summary" : "Cria uma proposta de crédito consignado",
+        "description" : "Publica ProposalCreated (via outbox) e dispara a análise de crédito.",
+        "operationId" : "create",
+        "parameters" : [ {
+          "name" : "X-Tenant-Id",
+          "in" : "header",
+          "description" : "Tenant da requisição (injetado pelo api-gateway após validar o JWT)",
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateProposalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Proposta criada (status PENDING_CREDIT_ANALYSIS)",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CreateProposalResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "requestedAmount ou termMonths inválido"
+          },
+          "401" : {
+            "description" : "Sem X-Tenant-Id"
+          }
+        }
+      }
+    },
+    "/proposals/{id}" : {
+      "get" : {
+        "tags" : [ "proposal-controller" ],
+        "summary" : "Consulta uma proposta pelo id",
+        "operationId" : "getById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "X-Tenant-Id",
+          "in" : "header",
+          "description" : "Tenant da requisição (injetado pelo api-gateway após validar o JWT)",
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Proposta encontrada",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CreateProposalResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Proposta inexistente (ou de outro tenant)"
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CreateProposalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "borrowerId" : {
+            "type" : "string"
+          },
+          "requestedAmount" : {
+            "type" : "number"
+          },
+          "termMonths" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "CreateProposalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "borrowerId" : {
+            "type" : "string"
+          },
+          "requestedAmount" : {
+            "type" : "number"
+          },
+          "termMonths" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      }
+    }
+  }
+}

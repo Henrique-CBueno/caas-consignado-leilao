@@ -6,6 +6,8 @@ build/
 # Kotlin/Java
 *.class
 out/
+# Saída de compilação da IDE (Java do VS Code/Eclipse)
+bin/
 
 # IDE
 .idea/

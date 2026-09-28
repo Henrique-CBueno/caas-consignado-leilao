@@ -8,7 +8,7 @@ MINIKUBE_MEMORY ?= 8192
 MINIKUBE_CPUS ?= 6
 MK = minikube -p $(MINIKUBE_PROFILE)
 
-.PHONY: up down ps logs test deploy-local smoke-test k8s-down
+.PHONY: up down ps logs test docs-check deploy-local smoke-test k8s-down
 
 up:
 	$(COMPOSE) up -d
@@ -46,6 +46,10 @@ POSTGRES = $(if $(SLIM),$(SLIM_POSTGRES),$(FULL_POSTGRES))
 
 test:
 	./gradlew test integrationTest contractTest --continue
+
+docs-check:
+	sh scripts/docs-check.test.sh
+	sh scripts/docs-check.sh .
 
 deploy-local:
 	$(MK) status -f '{{.Host}}' | grep -q Running || $(MK) start --driver=docker --memory=$(MINIKUBE_MEMORY) --cpus=$(MINIKUBE_CPUS)

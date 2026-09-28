@@ -9,6 +9,10 @@ import com.caas.proposal.domain.TenantId;
 import com.caas.proposal.infrastructure.TenantContextHolder;
 import java.math.BigDecimal;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +34,12 @@ public class ProposalController {
         this.createProposalUseCase = createProposalUseCase;
     }
 
+    @Operation(summary = "Cria uma proposta de crédito consignado", description = "Publica ProposalCreated (via outbox) e dispara a análise de crédito.", responses = {
+        @ApiResponse(responseCode = "201", description = "Proposta criada (status PENDING_CREDIT_ANALYSIS)"),
+        @ApiResponse(responseCode = "400", description = "requestedAmount ou termMonths inválido", content = @io.swagger.v3.oas.annotations.media.Content),
+        @ApiResponse(responseCode = "401", description = "Sem X-Tenant-Id", content = @io.swagger.v3.oas.annotations.media.Content)
+    })
+    @Parameter(name = "X-Tenant-Id", in = ParameterIn.HEADER, required = true, description = "Tenant da requisição (injetado pelo api-gateway após validar o JWT)")
     @PostMapping("/proposals")
     @ResponseStatus(HttpStatus.CREATED)
     public CreateProposalResponse create(@RequestBody CreateProposalRequest request) {
@@ -53,6 +63,11 @@ public class ProposalController {
         return toResponse(saved);
     }
 
+    @Operation(summary = "Consulta uma proposta pelo id", responses = {
+        @ApiResponse(responseCode = "200", description = "Proposta encontrada"),
+        @ApiResponse(responseCode = "404", description = "Proposta inexistente (ou de outro tenant)", content = @io.swagger.v3.oas.annotations.media.Content)
+    })
+    @Parameter(name = "X-Tenant-Id", in = ParameterIn.HEADER, required = true, description = "Tenant da requisição (injetado pelo api-gateway após validar o JWT)")
     @GetMapping("/proposals/{id}")
     public ResponseEntity<CreateProposalResponse> getById(@PathVariable UUID id) {
         Proposal proposal = proposalRepository.findById(new ProposalId(id));

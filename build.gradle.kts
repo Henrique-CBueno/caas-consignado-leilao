@@ -46,6 +46,7 @@ subprojects {
                 includeTestsMatching("*ContractTest")
                 isFailOnNoMatchingTests = false
             }
+            systemProperty("openapi.update", providers.systemProperty("openapi.update").getOrElse("false"))
             shouldRunAfter(integration)
         }
         tasks.named("check") { dependsOn(integration, contract) }

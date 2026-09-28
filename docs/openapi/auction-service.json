@@ -1,0 +1,145 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "auction-service",
+    "description" : "Leilão reverso de crédito: recebe lances (HTTP) e fecha o leilão pela regra de desempate. Chamado internamente pelo funder-bot-service.",
+    "version" : "1.0"
+  },
+  "paths" : {
+    "/auctions/{proposalId}/bids" : {
+      "post" : {
+        "tags" : [ "auction-controller" ],
+        "summary" : "Registra um lance num leilão aberto",
+        "description" : "Uso interno (funder-bot-service). Publica AuctionBidPlaced via outbox.",
+        "operationId" : "placeBid",
+        "parameters" : [ {
+          "name" : "proposalId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BidRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Lance aceito; devolve o leilão atualizado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuctionResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Leilão inexistente"
+          },
+          "409" : {
+            "description" : "Leilão já fechado ou expirado"
+          }
+        }
+      }
+    },
+    "/auctions/{proposalId}" : {
+      "get" : {
+        "tags" : [ "auction-controller" ],
+        "summary" : "Consulta um leilão pelo id da proposta",
+        "operationId" : "getAuction",
+        "parameters" : [ {
+          "name" : "proposalId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Leilão encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuctionResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Leilão inexistente"
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "BidRequest" : {
+        "type" : "object",
+        "properties" : {
+          "funderId" : {
+            "type" : "string"
+          },
+          "rate" : {
+            "type" : "number"
+          },
+          "termMonths" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "AuctionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "proposalId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "bids" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Bid"
+            }
+          },
+          "winningFunderId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Bid" : {
+        "type" : "object",
+        "properties" : {
+          "funderId" : {
+            "type" : "string"
+          },
+          "rate" : {
+            "type" : "number"
+          },
+          "termMonths" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "receivedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      }
+    }
+  }
+}

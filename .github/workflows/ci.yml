@@ -6,6 +6,12 @@ on:
   pull_request:
 
 jobs:
+  docs-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make docs-check
+
   test:
     runs-on: ubuntu-latest
     steps:

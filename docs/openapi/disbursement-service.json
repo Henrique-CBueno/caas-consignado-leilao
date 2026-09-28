@@ -1,0 +1,72 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "disbursement-service",
+    "description" : "Consulta de desembolsos simulados, registrados a partir do evento ContractSigned.",
+    "version" : "1.0"
+  },
+  "paths" : {
+    "/disbursements/{proposalId}" : {
+      "get" : {
+        "tags" : [ "disbursement-controller" ],
+        "summary" : "Consulta o desembolso de uma proposta",
+        "operationId" : "getByProposalId",
+        "parameters" : [ {
+          "name" : "proposalId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "X-Tenant-Id",
+          "in" : "header",
+          "description" : "Tenant da requisição",
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Desembolso encontrado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DisbursementResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Ainda não há desembolso para a proposta"
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "DisbursementResponse" : {
+        "type" : "object",
+        "properties" : {
+          "proposalId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "funderId" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "disbursedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      }
+    }
+  }
+}
