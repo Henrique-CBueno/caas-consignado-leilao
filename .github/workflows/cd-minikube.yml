@@ -10,6 +10,10 @@ on:
 jobs:
   deploy-and-smoke-test:
     runs-on: ubuntu-latest
+    # DOCKERHUB_USERNAME/DOCKERHUB_TOKEN foram criados como Environment
+    # secrets (ambiente "secrets"), não Repository secrets — sem declarar
+    # o ambiente aqui, o job não os enxerga (achado empírico na Milestone 10).
+    environment: secrets
     steps:
       - uses: actions/checkout@v4
 
