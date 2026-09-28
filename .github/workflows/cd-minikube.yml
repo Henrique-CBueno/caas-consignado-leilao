@@ -28,9 +28,37 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+      # Sem isso, os ~12 pulls anônimos do Docker Hub deste job (base JRE ×9,
+      # nginx, bitnamilegacy/kafka+zookeeper, hashicorp/vault, postgres,
+      # localstack) estouram o rate limit anônimo de IPs compartilhados dos
+      # runners do GitHub (achado empírico na Milestone 10 — ImagePullBackOff
+      # em cascata). Requer os secrets DOCKERHUB_USERNAME/DOCKERHUB_TOKEN
+      # configurados no repositório (token gerado em hub.docker.com).
+      - name: Login no Docker Hub (autenticado, evita rate limit anônimo)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - uses: medyagh/setup-minikube@master
         with:
           driver: docker
+
+      # O login acima só autentica o Docker do runner (ajuda o `docker build`
+      # a puxar as imagens base) — os pods dentro do cluster minikube usam o
+      # runtime interno dele, com credenciais separadas. Precisa de um
+      # imagePullSecrets de verdade no namespace para os pulls de Postgres/
+      # LocalStack/Kafka/Vault também saírem autenticados.
+      - name: Configurar imagePullSecrets do Docker Hub no cluster
+        run: |
+          kubectl create namespace caas --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry dockerhub-creds \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username=${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-password=${{ secrets.DOCKERHUB_TOKEN }} \
+            -n caas --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch serviceaccount default -n caas \
+            -p '{"imagePullSecrets": [{"name": "dockerhub-creds"}]}'
 
       # LocalStack aqui é só o alvo do terraform apply (ver ADR-0002) — o
       # runtime do auction-service dentro do minikube usa seu próprio
