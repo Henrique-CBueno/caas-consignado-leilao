@@ -20,6 +20,8 @@ spec:
           image: caas/credit-analysis-service:local
           imagePullPolicy: Never
           env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx192m -XX:+UseSerialGC"
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres-credit-analysis-service:5432/caas
             - name: SPRING_DATASOURCE_USERNAME

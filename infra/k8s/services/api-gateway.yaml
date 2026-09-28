@@ -20,6 +20,8 @@ spec:
           ports:
             - containerPort: 8080
           env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx192m -XX:+UseSerialGC"
             - name: APP_ROUTES_TENANT_SERVICE_URI
               value: http://tenant-service:8080
             - name: APP_ROUTES_PROPOSAL_SERVICE_URI

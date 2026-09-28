@@ -20,6 +20,8 @@ spec:
           ports:
             - containerPort: 8086
           env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx192m -XX:+UseSerialGC"
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
           readinessProbe:

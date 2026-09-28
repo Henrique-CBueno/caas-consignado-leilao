@@ -21,47 +21,41 @@ logs:
 # Postgres por serviço, os 9 serviços de app + dashboard) num cluster minikube
 # do zero. helm precisa estar no PATH (ver ADR-0008 sobre as imagens do Kafka).
 #
+# SLIM=1 (usado no CI, ver ADR-0009): só o caminho crítico do fluxo feliz, sem
+# tenant-service, api-gateway, notification-gateway, dashboard e Vault. O
+# cluster completo usa ~5,2 GiB — não cabe nos 7 GB de um runner privado do
+# GitHub Actions (o API server do minikube morre por falta de memória).
+#
 # Build no Docker do host (não no docker-env do minikube) + `minikube image
 # load`: o docker-env quebra em runners onde o minikube usa containerd como
 # runtime interno (buildx tenta subir um builder container e falha com 404 —
 # achado empírico na Milestone 10, "highly experimental" no próprio aviso do
 # minikube). `minikube image load` funciona com qualquer runtime interno.
+FULL_SERVICES = tenant-service api-gateway proposal-service credit-analysis-service auction-service notification-gateway-service funder-bot-service contract-service disbursement-service
+SLIM_SERVICES = proposal-service credit-analysis-service auction-service funder-bot-service contract-service disbursement-service
+FULL_POSTGRES = tenant-service proposal-service credit-analysis-service contract-service disbursement-service
+SLIM_POSTGRES = proposal-service credit-analysis-service contract-service disbursement-service
+SERVICES = $(if $(SLIM),$(SLIM_SERVICES),$(FULL_SERVICES))
+POSTGRES = $(if $(SLIM),$(SLIM_POSTGRES),$(FULL_POSTGRES))
+
 deploy-local:
 	minikube status -f '{{.Host}}' | grep -q Running || minikube start --driver=docker
 	./gradlew bootJar
-	cd dashboard && npx ng build
-	docker build -t caas/tenant-service:local services/tenant-service
-	docker build -t caas/api-gateway:local services/api-gateway
-	docker build -t caas/proposal-service:local services/proposal-service
-	docker build -t caas/credit-analysis-service:local services/credit-analysis-service
-	docker build -t caas/auction-service:local services/auction-service
-	docker build -t caas/notification-gateway-service:local services/notification-gateway-service
-	docker build -t caas/funder-bot-service:local services/funder-bot-service
-	docker build -t caas/contract-service:local services/contract-service
-	docker build -t caas/disbursement-service:local services/disbursement-service
-	docker build -t caas/dashboard:local dashboard
-	minikube image load caas/tenant-service:local
-	minikube image load caas/api-gateway:local
-	minikube image load caas/proposal-service:local
-	minikube image load caas/credit-analysis-service:local
-	minikube image load caas/auction-service:local
-	minikube image load caas/notification-gateway-service:local
-	minikube image load caas/funder-bot-service:local
-	minikube image load caas/contract-service:local
-	minikube image load caas/disbursement-service:local
-	minikube image load caas/dashboard:local
+	$(if $(SLIM),,cd dashboard && npx ng build)
+	$(foreach s,$(SERVICES),docker build -t caas/$(s):local services/$(s) &&) true
+	$(if $(SLIM),,docker build -t caas/dashboard:local dashboard)
+	$(foreach s,$(SERVICES),minikube image load caas/$(s):local &&) true
+	$(if $(SLIM),,minikube image load caas/dashboard:local)
 	kubectl create namespace $(K8S_NS) --dry-run=client -o yaml | kubectl apply -f -
 	helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null 2>&1 || true
 	helm repo add hashicorp https://helm.releases.hashicorp.com >/dev/null 2>&1 || true
 	helm repo update
 	helm upgrade --install kafka bitnami/kafka --version 31.5.0 -n $(K8S_NS) -f $(K8S_DIR)/helm-values/kafka-values.yaml --wait --timeout 5m
-	helm upgrade --install vault hashicorp/vault -n $(K8S_NS) -f $(K8S_DIR)/helm-values/vault-values.yaml --wait --timeout 5m
-	kubectl apply -f $(K8S_DIR)/localstack/ -f $(K8S_DIR)/postgres/ -f $(K8S_DIR)/services/ -f $(K8S_DIR)/dashboard/
-	# 600s, não 180s: runners de CI têm bem menos CPU que uma máquina de
-	# desenvolvedor — 19 pods subindo ao mesmo tempo (5 Postgres, Kafka+ZK,
-	# Vault, LocalStack, 9 serviços de app, dashboard) com pull de imagem a
-	# frio disputam CPU e demoram mais para ficar Ready (achado empírico
-	# na Milestone 10: 180s não bastou no runner do GitHub Actions).
+	$(if $(SLIM),,helm upgrade --install vault hashicorp/vault -n $(K8S_NS) -f $(K8S_DIR)/helm-values/vault-values.yaml --wait --timeout 5m)
+	kubectl apply -f $(K8S_DIR)/localstack/ $(foreach p,$(POSTGRES),-f $(K8S_DIR)/postgres/postgres-$(p).yaml) $(foreach s,$(SERVICES),-f $(K8S_DIR)/services/$(s).yaml) $(if $(SLIM),,-f $(K8S_DIR)/dashboard/)
+	# 600s: runners de CI têm bem menos CPU que uma máquina de desenvolvedor
+	# (2 vCPUs no GitHub Actions) — pods subindo juntos com pull de imagem a
+	# frio disputam CPU e demoram mais para ficar Ready.
 	kubectl wait --for=condition=ready pod --all -n $(K8S_NS) --timeout=600s
 
 # Publica uma proposta real via HTTP e espera o fluxo feliz completo terminar

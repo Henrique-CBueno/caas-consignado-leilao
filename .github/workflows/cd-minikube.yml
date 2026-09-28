@@ -75,11 +75,18 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      - name: Instalar dependências do dashboard
-        run: npm ci
-        working-directory: dashboard
+      # O runner tem 7 GB: o LocalStack do Terraform (~600 MB) já cumpriu seu
+      # papel e o daemon do Gradle é dispensável — sem liberar, o API server do
+      # minikube morre por falta de memória (achado empírico na Milestone 10).
+      - name: Liberar memória do runner
+        run: docker rm -f localstack
 
-      - run: make deploy-local
+      # SLIM=1: sem tenant-service/api-gateway/notification-gateway/dashboard/
+      # Vault — o smoke test só exercita o fluxo feliz Kafka+REST interno
+      # (ADR-0009). O deploy completo segue via `make deploy-local` local.
+      - run: make deploy-local SLIM=1
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false
 
       - run: make smoke-test
 
