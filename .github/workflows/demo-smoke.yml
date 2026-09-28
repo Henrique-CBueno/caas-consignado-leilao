@@ -1,0 +1,58 @@
+name: demo-smoke
+
+# Único lugar do projeto que chama a API real do Jev/OpenRouter — isolado de
+# todo PR/push normal, para nunca acoplar o pipeline principal a uma API
+# externa paga/instável (ver ADR-0005). Precisa do secret OPENROUTER_API_KEY
+# configurado no repositório; sem ele, só este workflow (opt-in) não roda.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 9 * * 1" # segunda-feira, 09:00 UTC
+
+jobs:
+  jev-real-decision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Subir Kafka, Zookeeper, Postgres e Vault
+        run: docker compose -f infra/docker/docker-compose.dev.yml up -d zookeeper kafka postgres vault
+
+      - name: Esperar infra ficar pronta
+        run: |
+          until docker compose -f infra/docker/docker-compose.dev.yml exec -T kafka kafka-broker-api-versions --bootstrap-server localhost:9092; do sleep 3; done
+          until docker compose -f infra/docker/docker-compose.dev.yml exec -T postgres pg_isready -U caas; do sleep 3; done
+
+      - run: ./gradlew :services:credit-analysis-service:bootJar
+
+      - name: Rodar credit-analysis-service com o perfil jev
+        env:
+          SPRING_PROFILES_ACTIVE: jev
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/caas
+          SPRING_DATASOURCE_USERNAME: caas
+          SPRING_DATASOURCE_PASSWORD: caas
+          KAFKA_BOOTSTRAP_SERVERS: localhost:29092
+          VAULT_URI: http://localhost:8200
+          VAULT_TOKEN: dev-root-token
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          java -jar services/credit-analysis-service/build/libs/credit-analysis-service.jar &
+          echo $! > app.pid
+          sleep 15
+
+      - name: Publicar uma proposta real e confirmar decisão real do Jev
+        run: |
+          PROPOSAL_ID=$(cat /proc/sys/kernel/random/uuid)
+          TENANT_ID=$(cat /proc/sys/kernel/random/uuid)
+          JSON="{\"proposalId\":\"$PROPOSAL_ID\",\"tenantId\":\"$TENANT_ID\",\"borrowerId\":\"59\",\"requestedAmount\":5000.00,\"termMonths\":24}"
+          echo "$JSON" | docker compose -f infra/docker/docker-compose.dev.yml exec -T kafka kafka-console-producer --bootstrap-server localhost:9092 --topic proposal.created
+          timeout 30 docker compose -f infra/docker/docker-compose.dev.yml exec -T kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic credit.decision.made --from-beginning --timeout-ms 25000 | grep -q "$PROPOSAL_ID"
+
+      - name: Encerrar o app
+        if: always()
+        run: kill $(cat app.pid) 2>/dev/null || true

@@ -1,0 +1,56 @@
+name: cd-minikube
+
+# Prova o fluxo feliz completo (Milestone 8) rodando dentro de um cluster
+# minikube efêmero do próprio runner do GitHub Actions — não só na máquina do
+# desenvolvedor (make deploy-local/make smoke-test já validados na Milestone 9).
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-and-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Instalar Helm
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - uses: medyagh/setup-minikube@master
+        with:
+          driver: docker
+
+      # LocalStack aqui é só o alvo do terraform apply (ver ADR-0002) — o
+      # runtime do auction-service dentro do minikube usa seu próprio
+      # LocalStack no cluster (infra/k8s/localstack), papéis diferentes.
+      - name: Terraform apply contra LocalStack
+        run: |
+          docker run -d --name localstack -p 4566:4566 -e SERVICES=dynamodb localstack/localstack:3.8
+          until curl -sf http://localhost:4566/_localstack/health; do sleep 2; done
+          cd infra/terraform
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Instalar dependências do dashboard
+        run: npm ci
+        working-directory: dashboard
+
+      - run: make deploy-local
+
+      - run: make smoke-test
+
+      - name: Descrever pods em caso de falha
+        if: failure()
+        run: kubectl get pods -n caas -o wide && kubectl describe pods -n caas

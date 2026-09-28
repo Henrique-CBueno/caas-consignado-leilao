@@ -22,6 +22,21 @@ jobs:
       # ubuntu-latest do GitHub já vêm com Docker.
       - run: ./gradlew test --no-daemon
 
-# Lint dedicado (ktlint) fica pendente — bug conhecido do plugin nesta combinação
-# de versões (ver build.gradle.kts raiz). Build de imagem/terraform/deploy entram
-# quando esses componentes existirem (ver plano de implementação).
+  # Lint dedicado (ktlint) fica pendente — bug conhecido do plugin nesta combinação
+  # de versões (ver build.gradle.kts raiz). Build de imagem/deploy entram no
+  # cd-minikube.yml (Milestone 10).
+  terraform-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      # LocalStack Community só emula DynamoDB/S3 de verdade (ver ADR-0002) —
+      # é só isso que este módulo Terraform provisiona.
+      - name: Subir LocalStack
+        run: |
+          docker run -d --name localstack -p 4566:4566 -e SERVICES=dynamodb localstack/localstack:3.8
+          until curl -sf http://localhost:4566/_localstack/health; do sleep 2; done
+      - working-directory: infra/terraform
+        run: terraform init
+      - working-directory: infra/terraform
+        run: terraform plan
