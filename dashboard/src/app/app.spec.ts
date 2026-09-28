@@ -1,11 +1,35 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withHashLocation } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 import { AUCTION_FEED, AuctionClosed, AuctionFeed, Bid, ConnectionState } from './auction-feed';
+import { AUTH, Auth } from './auth';
 import { NAVIGATE } from './browser';
 import { DemoAuctionFeed } from './demo-auction-feed';
+
+class FakeAuth implements Auth {
+  readonly tenant = signal<string | null>(null);
+  readonly idToken = signal<string | null>(null);
+  readonly loginCalls: string[] = [];
+  failLoginWith: string | null = null;
+
+  async login(tenant: string): Promise<void> {
+    this.loginCalls.push(tenant);
+    if (this.failLoginWith) {
+      throw new Error(this.failLoginWith);
+    }
+    this.tenant.set(tenant);
+    this.idToken.set(`token-${tenant}`);
+  }
+
+  logout(): void {
+    this.tenant.set(null);
+    this.idToken.set(null);
+  }
+}
 
 class FakeFeed implements AuctionFeed {
   readonly connection = signal<ConnectionState>('idle');
@@ -28,13 +52,20 @@ function bid(funderId: string, rate: number, termMonths: number, receivedAt: str
 
 const A_PROPOSAL_ID = '2ac7ad63-7381-418c-942a-3aebf59290e3';
 
-async function render(feed: AuctionFeed, navigate: (url: string) => void = () => {}) {
+async function render(
+  feed: AuctionFeed,
+  navigate: (url: string) => void = () => {},
+  auth: Auth = new FakeAuth(),
+) {
   TestBed.configureTestingModule({
     imports: [App],
     providers: [
       { provide: AUCTION_FEED, useValue: feed },
+      { provide: AUTH, useValue: auth },
       { provide: NAVIGATE, useValue: navigate },
       provideRouter(routes, withHashLocation()),
+      provideHttpClient(),
+      provideHttpClientTesting(),
     ],
   });
   const fixture = TestBed.createComponent(App);
@@ -44,6 +75,7 @@ async function render(feed: AuctionFeed, navigate: (url: string) => void = () =>
 
   return {
     page,
+    http: TestBed.inject(HttpTestingController),
     async settle() {
       await fixture.whenStable();
     },
@@ -535,6 +567,139 @@ describe('Leilão ao vivo', () => {
       await screen.navigateTo('Histórico');
 
       expect(screen.page.querySelector('ul li')?.textContent).not.toContain('Simulado');
+    });
+  });
+
+  describe('entrar', () => {
+    it('lista os três tenants de demonstração e loga ao escolher um', async () => {
+      const auth = new FakeAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+
+      await screen.navigateTo('Entrar');
+
+      expect(screen.page.textContent).toContain('Banco Alfa');
+      expect(screen.page.textContent).toContain('Banco Beta');
+      expect(screen.page.textContent).toContain('Fintech Gama');
+
+      await screen.clickButton('Banco Alfa');
+
+      expect(auth.loginCalls).toEqual(['alfa']);
+      expect(auth.tenant()).toBe('alfa');
+    });
+
+    it('mostra um erro e não navega quando o login falha', async () => {
+      const auth = new FakeAuth();
+      auth.failLoginWith = 'credenciais inválidas';
+      const screen = await render(new FakeFeed(), () => {}, auth);
+      await screen.navigateTo('Entrar');
+
+      await screen.clickButton('Banco Alfa');
+
+      expect(screen.page.querySelector('[role="alert"]')).not.toBeNull();
+      expect(auth.tenant()).toBeNull();
+      expect(screen.page.textContent).toContain('Escolha um tenant de demonstração');
+    });
+  });
+
+  describe('sessão no cabeçalho', () => {
+    it('mostra "Entrar" quando não há sessão e o tenant logado quando há', async () => {
+      const auth = new FakeAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+
+      expect(screen.page.textContent).toContain('Entrar');
+      expect(screen.page.textContent).not.toContain('Sair');
+
+      await auth.login('alfa');
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('alfa');
+      expect(screen.page.textContent).toContain('Sair');
+    });
+
+    it('a ação Sair limpa a sessão e volta a oferecer Entrar', async () => {
+      const auth = new FakeAuth();
+      await auth.login('alfa');
+      const screen = await render(new FakeFeed(), () => {}, auth);
+
+      await screen.clickButton('Sair');
+
+      expect(auth.tenant()).toBeNull();
+      expect(auth.idToken()).toBeNull();
+      expect(screen.page.textContent).toContain('Entrar');
+    });
+  });
+
+  describe('nova proposta', () => {
+    function loggedInAuth(): FakeAuth {
+      const auth = new FakeAuth();
+      auth.tenant.set('alfa');
+      auth.idToken.set('token-alfa');
+      return auth;
+    }
+
+    it('recusa valor e prazo inválidos antes de enviar', async () => {
+      const auth = loggedInAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+      await screen.navigateTo('Nova proposta');
+
+      (screen.page.querySelector('#borrower-id') as HTMLInputElement).value = '59';
+      (screen.page.querySelector('#borrower-id') as HTMLInputElement).dispatchEvent(new Event('input'));
+      (screen.page.querySelector('#requested-amount') as HTMLInputElement).value = '0';
+      (screen.page.querySelector('#requested-amount') as HTMLInputElement).dispatchEvent(new Event('input'));
+      (screen.page.querySelector('#term-months') as HTMLInputElement).value = '0';
+      (screen.page.querySelector('#term-months') as HTMLInputElement).dispatchEvent(new Event('input'));
+      await screen.settle();
+      await screen.clickButton('Criar proposta');
+
+      expect(screen.page.querySelector('[role="alert"]')?.textContent).toContain('valor');
+      screen.http.expectNone(() => true);
+    });
+
+    it('envia a proposta com o token da sessão e navega para o acompanhamento', async () => {
+      const auth = loggedInAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+      await screen.navigateTo('Nova proposta');
+
+      (screen.page.querySelector('#borrower-id') as HTMLInputElement).value = '59';
+      (screen.page.querySelector('#borrower-id') as HTMLInputElement).dispatchEvent(new Event('input'));
+      (screen.page.querySelector('#requested-amount') as HTMLInputElement).value = '5000';
+      (screen.page.querySelector('#requested-amount') as HTMLInputElement).dispatchEvent(new Event('input'));
+      (screen.page.querySelector('#term-months') as HTMLInputElement).value = '24';
+      (screen.page.querySelector('#term-months') as HTMLInputElement).dispatchEvent(new Event('input'));
+      await screen.settle();
+      await screen.clickButton('Criar proposta');
+
+      const request = screen.http.expectOne(
+        (r) => r.url.endsWith('/proposals') && r.method === 'POST',
+      );
+      expect(request.request.headers.get('Authorization')).toBe('Bearer token-alfa');
+      expect(request.request.body).toEqual({ borrowerId: '59', requestedAmount: 5000, termMonths: 24 });
+      request.flush({ id: A_PROPOSAL_ID });
+      await screen.settle();
+
+      expect(screen.page.querySelector('input')?.getAttribute('id')).toBe('proposal-id');
+      expect((screen.page.querySelector('input') as HTMLInputElement).value).toBe(A_PROPOSAL_ID);
+    });
+
+    it('mostra o erro do backend quando o envio falha', async () => {
+      const auth = loggedInAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+      await screen.navigateTo('Nova proposta');
+
+      (screen.page.querySelector('#borrower-id') as HTMLInputElement).value = '59';
+      (screen.page.querySelector('#borrower-id') as HTMLInputElement).dispatchEvent(new Event('input'));
+      (screen.page.querySelector('#requested-amount') as HTMLInputElement).value = '5000';
+      (screen.page.querySelector('#requested-amount') as HTMLInputElement).dispatchEvent(new Event('input'));
+      (screen.page.querySelector('#term-months') as HTMLInputElement).value = '24';
+      (screen.page.querySelector('#term-months') as HTMLInputElement).dispatchEvent(new Event('input'));
+      await screen.settle();
+      await screen.clickButton('Criar proposta');
+
+      const request = screen.http.expectOne(() => true);
+      request.flush({ message: 'requestedAmount deve ser maior que zero' }, { status: 400, statusText: 'Bad Request' });
+      await screen.settle();
+
+      expect(screen.page.querySelector('[role="alert"]')).not.toBeNull();
     });
   });
 });

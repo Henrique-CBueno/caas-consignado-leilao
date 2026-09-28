@@ -4,9 +4,18 @@
   <nav aria-label="Principal">
     <a routerLink="/" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }">Ao vivo</a>
     <a routerLink="/historico" routerLinkActive="current">Histórico</a>
+    @if (auth.tenant(); as tenant) {
+      <a routerLink="/nova-proposta" routerLinkActive="current">Nova proposta</a>
+    }
   </nav>
 
   <div class="bar-tools">
+    @if (auth.tenant(); as tenant) {
+      <span class="tenant">{{ tenant }}</span>
+      <button type="button" (click)="auth.logout()">Sair</button>
+    } @else {
+      <a class="tool-link" routerLink="/entrar" routerLinkActive="current">Entrar</a>
+    }
     @if (feed.demo) {
       <span class="demo-badge">Modo demonstração</span>
     }

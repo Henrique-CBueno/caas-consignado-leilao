@@ -1,6 +1,7 @@
 import { Component, OnDestroy, computed, effect, inject, untracked } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AUCTION_FEED, ConnectionState } from './auction-feed';
+import { AUTH } from './auth';
 import { HistoryStore } from './history-store';
 import { ThemeService } from './theme';
 
@@ -19,6 +20,7 @@ const CONNECTION_LABELS: Record<ConnectionState, string> = {
 })
 export class App implements OnDestroy {
   protected readonly feed = inject(AUCTION_FEED);
+  protected readonly auth = inject(AUTH);
 
   private readonly history = inject(HistoryStore);
   protected readonly themeService = inject(ThemeService);
