@@ -8,7 +8,7 @@ MINIKUBE_MEMORY ?= 8192
 MINIKUBE_CPUS ?= 6
 MK = minikube -p $(MINIKUBE_PROFILE)
 
-.PHONY: up down ps logs test docs-check deploy-local smoke-test token k8s-down
+.PHONY: up down ps logs test test-front docs-check deploy-local smoke-test token k8s-down
 
 up:
 	$(COMPOSE) up -d
@@ -46,6 +46,9 @@ POSTGRES = $(if $(SLIM),$(SLIM_POSTGRES),$(FULL_POSTGRES))
 
 test:
 	./gradlew test integrationTest contractTest --continue
+
+test-front:
+	cd dashboard && npx ng test --watch=false
 
 docs-check:
 	sh scripts/docs-check.test.sh

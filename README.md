@@ -55,12 +55,13 @@ Desenvolvimento do dia a dia:
 make up             # Kafka, Zookeeper, LocalStack e Vault leves via docker compose
 make down           # derruba e limpa volumes
 make test           # unitários, integração (Testcontainers) e contrato
+make test-front    # testes do dashboard Angular (Vitest + jsdom)
 make docs-check     # links, ADRs e alvos make da documentação
 ```
 
 ## Testes
 
-`make test` roda três níveis, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
+O front tem testes próprios (`make test-front`, Vitest + jsdom, 38 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
 
 ## Limitações conhecidas
 

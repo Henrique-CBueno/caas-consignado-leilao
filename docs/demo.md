@@ -84,9 +84,13 @@ curl -s -X POST http://$IP:30080/proposals \
   -d '{"borrowerId":"59","requestedAmount":5000.00,"termMonths":24}'
 ```
 
-Copie o `id` da resposta para o campo "ID da proposta" e clique em **Acompanhar** (o indicador vira "conectado"). Em 10–25 s os três lances aparecem ao vivo; a janela do leilão é de 45 s e, ao fechar, o banner mostra o vencedor (menor taxa; empate por prazo e depois por horário). Exemplo observado: `Leilão fechado: CLOSED_WITH_WINNER — vencedor funder-2 a 1.92%`.
+Copie o `id` da resposta para o campo "ID da proposta" e clique em **Acompanhar** (o indicador de conexão vira "conectado"). Cada lance entra no rack como uma tira, na posição que a regra de desempate lhe dá (menor taxa, depois menor prazo, depois lance mais antigo, impressa no painel à esquerda); a líder ocupa a tira grande, e quem já liderou e foi superado ganha "Ultrapassada" com a cruz de caneta. Em 10–25 s os três lances aparecem ao vivo; a janela do leilão é de 45 s e, ao fechar, a vencedora recebe o carimbo "Vencedora", as demais viram "Não vencedora" ou "Ultrapassada", e uma linha de status confirma o resultado. Exemplo observado: `Leilão fechado — vencedor funder-2 a 1,90%`. Sem cluster, o botão "Ver com dados simulados" (ou `?demo` na URL) roda uma história fixa; o selo "Modo demonstração" fica sempre visível e o Histórico marca a execução como simulada.
 
 ![Leilão ao vivo](img/dashboard-leilao.png)
+
+No celular (a partir de 320 px), as tiras viram duas linhas e a regra de desempate fica compacta:
+
+![Leilão ao vivo no celular](img/dashboard-leilao-celular.png)
 
 Injeção manual de lance (o mesmo endpoint dos bots, [ADR-0019](adr/0019-financiadores-simulados-como-servico.md)), enquanto o leilão está aberto:
 

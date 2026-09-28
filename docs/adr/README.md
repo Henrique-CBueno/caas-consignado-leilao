@@ -32,6 +32,7 @@ Decisões de arquitetura do CaaS Consignado Leilão. Cada ADR tem **Status**, **
 | [0024](0024-kubernetes-statefulsets-helm-e-vault-em-modo-dev.md) | Kubernetes, StatefulSets, Helm e Vault dev |
 | [0025](0025-escopo-do-shared-kernel.md) | Escopo do shared kernel |
 | [0026](0026-metodologia-spec-first-e-tdd.md) | Metodologia spec-first e TDD |
+| [0027](0027-front-rack-de-tiras-e-feed-injetavel.md) | Front: feed injetável, modo demonstração e Rack de tiras |
 
 ## Mapa dos 26 temas do plano
 
