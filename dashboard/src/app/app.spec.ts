@@ -392,7 +392,7 @@ describe('Leilão ao vivo', () => {
       const rows = Array.from(screen.page.querySelectorAll('ol li'));
       expect(rows).toHaveLength(4);
       expect(rows[0].textContent).toContain('funder-2');
-      expect(rows[0].textContent).toContain('Melhor lance');
+      expect(rows[0].textContent).toContain('Vencedora');
       expect(screen.page.querySelector('[aria-label="Resultado do leilão"]')?.textContent).toContain(
         'funder-2',
       );
@@ -496,5 +496,45 @@ describe('Leilão ao vivo', () => {
     await screen.navigateTo('Histórico');
 
     expect(screen.page.querySelector('ul li')?.textContent).toContain('Último acompanhado');
+  });
+
+  describe('depois do fechamento', () => {
+    it('chama de "Não vencedora" a tira que nunca liderou, em vez de "Em disputa"', async () => {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+      feed.bids.set([
+        bid('funder-b', 1.9, 18, '2026-09-28T12:49:22.000000000Z'),
+        bid('funder-a', 2.5, 24, '2026-09-28T12:49:24.000000000Z'),
+      ]);
+      feed.closed.set({ status: 'CLOSED_WITH_WINNER', winningFunderId: 'funder-b', winningRate: 1.9 });
+      await screen.settle();
+
+      const rows = Array.from(screen.page.querySelectorAll('ol li'));
+      const rowA = rows.find((li) => li.textContent?.includes('funder-a'));
+      const rowB = rows.find((li) => li.textContent?.includes('funder-b'));
+      expect(rowA?.textContent).toContain('Não vencedora');
+      expect(rowA?.textContent).not.toContain('Em disputa');
+      expect(rowB?.textContent).toContain('Vencedora');
+    });
+  });
+
+  describe('execuções simuladas no histórico', () => {
+    it('marca como simulado o leilão acompanhado em modo demonstração', async () => {
+      const screen = await render(new DemoAuctionFeed(5));
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+
+      expect(screen.page.querySelector('ul li')?.textContent).toContain('Simulado');
+    });
+
+    it('não marca como simulado o leilão acompanhado com dados reais', async () => {
+      const screen = await render(new FakeFeed());
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+
+      expect(screen.page.querySelector('ul li')?.textContent).not.toContain('Simulado');
+    });
   });
 });

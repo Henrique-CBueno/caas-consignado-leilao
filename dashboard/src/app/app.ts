@@ -1,5 +1,5 @@
 import { Component, OnDestroy, computed, effect, inject, untracked } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AUCTION_FEED, ConnectionState } from './auction-feed';
 import { HistoryStore } from './history-store';
 import { ThemeService } from './theme';
@@ -12,7 +12,7 @@ const CONNECTION_LABELS: Record<ConnectionState, string> = {
 };
 
 @Component({
-  imports: [RouterLink, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',

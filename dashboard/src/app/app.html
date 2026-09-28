@@ -1,19 +1,24 @@
-<header>
-  @if (feed.demo) {
-    <span class="demo-badge">Modo demonstração</span>
-  }
+<header class="bar">
+  <span class="brand">CaaS Leilão</span>
+
   <nav aria-label="Principal">
-    <a routerLink="/">Ao vivo</a>
-    <a routerLink="/historico">Histórico</a>
+    <a routerLink="/" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }">Ao vivo</a>
+    <a routerLink="/historico" routerLinkActive="current">Histórico</a>
   </nav>
-  @if (!feed.demo) {
-    <a [href]="trace">Trace</a>
-    <a [href]="metrics">Métricas</a>
-  }
-  <button type="button" (click)="themeService.toggle()">Alternar tema</button>
-  <span class="status" role="status" [class.status--connected]="connection() === 'connected'">
-    {{ connectionLabel() }}
-  </span>
+
+  <div class="bar-tools">
+    @if (feed.demo) {
+      <span class="demo-badge">Modo demonstração</span>
+    }
+    <span class="status" role="status" [attr.data-state]="connection()">
+      <i class="status-mark" aria-hidden="true"></i>{{ connectionLabel() }}
+    </span>
+    @if (!feed.demo) {
+      <a class="tool-link" [href]="trace">Trace</a>
+      <a class="tool-link" [href]="metrics">Métricas</a>
+    }
+    <button type="button" (click)="themeService.toggle()">Alternar tema</button>
+  </div>
 </header>
 
 <main>

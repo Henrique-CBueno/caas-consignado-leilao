@@ -1,62 +1,94 @@
-<section>
-  <h1>Leilão ao vivo</h1>
+<section class="bay">
+  <aside class="rule" aria-label="Regra de desempate">
+    <h2>Regra de desempate</h2>
+    <ul>
+      <li><span class="rank">1º</span>Menor taxa</li>
+      <li><span class="rank">2º</span>Menor prazo</li>
+      <li><span class="rank">3º</span>Lance mais antigo</li>
+    </ul>
+    <p>A tira que ocupa a primeira posição vence quando o leilão fecha.</p>
+  </aside>
 
-  <div class="watch-form">
-    <input
-      type="text"
-      placeholder="ID da proposta"
-      [(ngModel)]="proposalId"
-      name="proposalId"
-    />
-    <button type="button" (click)="watch()">Acompanhar</button>
-  </div>
+  <div class="deck">
+    <h1>Leilão ao vivo</h1>
 
-  @if (feed.watching() === null) {
-    @if (history.entries().length > 0) {
-      <section aria-label="Últimos leilões">
-        <h2>Últimos leilões</h2>
-        <ul>
-          @for (entry of history.entries().slice(0, 5); track entry.proposalId) {
-            <li><a routerLink="/" [queryParams]="{ proposta: entry.proposalId }">{{ entry.proposalId }}</a></li>
-          }
-        </ul>
+    <form class="watch" (ngSubmit)="watch()">
+      <label for="proposal-id">ID da proposta</label>
+      <div class="watch-row">
+        <input
+          id="proposal-id"
+          type="text"
+          name="proposalId"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="00000000-0000-0000-0000-000000000000"
+          [(ngModel)]="proposalId"
+        />
+        <button class="primary" type="submit">Acompanhar</button>
+      </div>
+      @if (proposalIdError(); as error) {
+        <p class="error" role="alert">{{ error }}</p>
+      }
+    </form>
+
+    @if (feed.watching() === null) {
+      <div class="start">
+        @if (history.entries().length > 0) {
+          <section aria-label="Últimos leilões">
+            <h2>Últimos leilões</h2>
+            <ul>
+              @for (entry of history.entries().slice(0, 3); track entry.proposalId) {
+                <li app-archive-strip [entry]="entry"></li>
+              }
+            </ul>
+          </section>
+        }
+        @if (!feed.demo) {
+          <button type="button" (click)="showDemo()">Ver com dados simulados</button>
+        }
+      </div>
+    }
+
+    @if (closedAuction(); as closed) {
+      <section class="result" role="region" aria-label="Resultado do leilão">
+        @if (closed.winningFunderId) {
+          Leilão fechado — vencedor {{ closed.winningFunderId }} a {{ formatRate(closed.winningRate ?? 0) }}
+        } @else {
+          Leilão fechado sem vencedor
+        }
       </section>
     }
-    @if (!feed.demo) {
-      <button type="button" (click)="showDemo()">Ver com dados simulados</button>
-    }
-  }
 
-  @if (proposalIdError(); as error) {
-    <p class="error" role="alert">{{ error }}</p>
-  }
+    <p class="visually-hidden" aria-live="polite">{{ leaderAnnouncement() }}</p>
 
-  @if (closedAuction(); as closed) {
-    <section class="closed-banner" role="region" aria-label="Resultado do leilão">
-      @if (closed.winningFunderId) {
-        Leilão fechado — vencedor {{ closed.winningFunderId }} a {{ formatRate(closed.winningRate ?? 0) }}
-      } @else {
-        Leilão fechado sem vencedor
-      }
-    </section>
-  }
-
-  <p class="visually-hidden" aria-live="polite">{{ leaderAnnouncement() }}</p>
-
-  <ol class="bids">
-    @for (strip of strips(); track strip.bid.receivedAt + strip.bid.funderId; let first = $first) {
-      <li>
-        @if (strip.state === 'leader') {
-          <strong>Melhor lance</strong>
-        } @else if (strip.state === 'passed') {
-          <strong>Ultrapassada</strong>
-        } @else {
-          <strong>Em disputa</strong>
+    <div class="frame">
+      <div class="rail" aria-hidden="true">
+        <span>Pos.</span>
+        <span class="rail-who">Financiador</span>
+        <span>Taxa</span>
+        <span>Prazo</span>
+        <span>Hora</span>
+      </div>
+      <ol class="rack">
+        @for (strip of strips(); track strip.bid.receivedAt + strip.bid.funderId; let index = $index) {
+          <li class="strip" [class.strip--settled]="closedAuction() !== null && strip.state === 'contending'" [attr.data-state]="strip.state" [attr.data-key]="strip.bid.receivedAt + strip.bid.funderId">
+            <span class="holder" aria-hidden="true"></span>
+            <span class="pos">{{ index + 1 }}º</span>
+            <span class="who">
+              <span class="funder">{{ strip.bid.funderId }}</span>
+              <strong class="tag" [class.tag--stamp]="isWinner(strip.bid)">{{ label(strip) }}</strong>
+            </span>
+            <span class="rate">{{ formatRate(strip.bid.rate) }}</span>
+            <span class="term">{{ strip.bid.termMonths }} meses</span>
+            <time class="time" [attr.datetime]="strip.bid.receivedAt" [title]="strip.bid.receivedAt">{{ clock(strip.bid.receivedAt) }}</time>
+          </li>
+        } @empty {
+          <li class="strip strip--empty">Nenhum lance ainda. O rack está vazio.</li>
         }
-        {{ strip.bid.funderId }} — {{ formatRate(strip.bid.rate) }} / {{ strip.bid.termMonths }} meses — {{ strip.bid.receivedAt }}
-      </li>
-    } @empty {
-      <li class="empty">Nenhum lance ainda.</li>
-    }
-  </ol>
+      </ol>
+      @for (bay of emptyBays(); track bay) {
+        <div class="bay-slot" aria-hidden="true"><span>{{ bay }}º</span></div>
+      }
+    </div>
+  </div>
 </section>

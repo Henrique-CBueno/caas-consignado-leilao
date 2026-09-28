@@ -5,6 +5,8 @@ export interface HistoryEntry {
   proposalId: string;
   seenAt: string;
   outcome?: AuctionClosed;
+  // Acompanhado no modo demonstração: nunca deve parecer um leilão real.
+  simulated?: boolean;
 }
 
 const STORAGE_KEY = 'caas.history';
@@ -15,9 +17,9 @@ const MAX_ENTRIES = 20;
 export class HistoryStore {
   readonly entries = signal<HistoryEntry[]>(this.load());
 
-  record(proposalId: string): void {
+  record(proposalId: string, simulated = false): void {
     const others = this.entries().filter((entry) => entry.proposalId !== proposalId);
-    this.update([{ proposalId, seenAt: new Date().toISOString() }, ...others]);
+    this.update([{ proposalId, seenAt: new Date().toISOString(), simulated }, ...others]);
   }
 
   recordOutcome(proposalId: string, outcome: AuctionClosed): void {
