@@ -32,7 +32,7 @@ nav a:hover {
 
 nav a.current {
   color: var(--ink);
-  border-bottom-color: var(--contend);
+  border-bottom-color: var(--accent-text);
 }
 
 .bar-tools {

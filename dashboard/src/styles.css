@@ -26,6 +26,7 @@
   --rack: #1c2622;
   --rack-2: #243029;
   --rack-line: #3a4941;
+  --control-line: #6d8177;
   --ink: #e8eee9;
   --ink-2: #aebbb3;
   --paper: #f2eedd;
@@ -50,6 +51,7 @@
   --rack: #b4c1b8;
   --rack-2: #c5d0c8;
   --rack-line: #8b9d92;
+  --control-line: #4a5d52;
   --ink: #131d18;
   --ink-2: #2b3a32;
   --paper: #fbf8ec;
@@ -126,7 +128,7 @@ input {
 button {
   min-height: 2.5rem;
   padding: 0 var(--space-4);
-  border: 1px solid var(--rack-line);
+  border: 1px solid var(--control-line);
   border-radius: 2px;
   background: transparent;
   color: var(--ink);
@@ -161,7 +163,7 @@ button.primary:hover {
 input {
   min-height: 2.5rem;
   padding: 0 var(--space-3);
-  border: 1px solid var(--rack-line);
+  border: 1px solid var(--control-line);
   border-radius: 2px;
   background: var(--rack-2);
   color: var(--ink);

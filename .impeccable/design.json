@@ -1,0 +1,858 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T18:57:45.039Z",
+  "title": "Design System: CaaS Consignado Leilão",
+  "extensions": {
+    "colorMeta": {
+      "rack": {
+        "role": "neutral",
+        "displayName": "Rack Grafite-Esverdeado",
+        "canonical": "#1c2622",
+        "tonalRamp": [
+          "#050d0a",
+          "#1e2824",
+          "#3a4540",
+          "#596460",
+          "#7a8681",
+          "#9ca8a3",
+          "#c0cdc7",
+          "#e5f2ec"
+        ]
+      },
+      "rack-2": {
+        "role": "neutral",
+        "displayName": "Rack Elevado",
+        "canonical": "#243029",
+        "tonalRamp": [
+          "#040e08",
+          "#1c2821",
+          "#39463e",
+          "#58655d",
+          "#78867e",
+          "#9ba9a0",
+          "#becdc4",
+          "#e3f3ea"
+        ]
+      },
+      "rack-line": {
+        "role": "neutral",
+        "displayName": "Linha do Rack",
+        "canonical": "#3a4941",
+        "tonalRamp": [
+          "#030e08",
+          "#1b2921",
+          "#37463e",
+          "#56665d",
+          "#76877e",
+          "#99aaa0",
+          "#bccec4",
+          "#e1f4ea"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "#e8eee9",
+        "tonalRamp": [
+          "#080c09",
+          "#222623",
+          "#3f433f",
+          "#5e635e",
+          "#7f847f",
+          "#a1a7a2",
+          "#c5cbc6",
+          "#eaf0eb"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Tinta Secundária",
+        "canonical": "#aebbb3",
+        "tonalRamp": [
+          "#050e08",
+          "#1e2822",
+          "#3a453e",
+          "#59655d",
+          "#7a867e",
+          "#9ca9a1",
+          "#c0cdc5",
+          "#e5f2ea"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papel Marfim",
+        "canonical": "#f2eedd",
+        "tonalRamp": [
+          "#0e0b02",
+          "#282518",
+          "#454234",
+          "#656153",
+          "#868373",
+          "#a9a595",
+          "#cdc9b9",
+          "#f3efde"
+        ]
+      },
+      "paper-ink": {
+        "role": "neutral",
+        "displayName": "Tinta de Papel",
+        "canonical": "#1a1e1c",
+        "tonalRamp": [
+          "#090c0a",
+          "#222624",
+          "#3f4341",
+          "#5e6260",
+          "#7f8481",
+          "#a1a6a4",
+          "#c5cbc8",
+          "#eaf0ed"
+        ]
+      },
+      "paper-ink-2": {
+        "role": "neutral",
+        "displayName": "Tinta de Papel Secundária",
+        "canonical": "#4f5651",
+        "tonalRamp": [
+          "#070d09",
+          "#212722",
+          "#3d443f",
+          "#5c635e",
+          "#7d857f",
+          "#9fa7a2",
+          "#c3ccc6",
+          "#e9f1eb"
+        ]
+      },
+      "strip-edge": {
+        "role": "neutral",
+        "displayName": "Borda da Tira",
+        "canonical": "#0f1512",
+        "tonalRamp": [
+          "#070d0a",
+          "#202724",
+          "#3d4440",
+          "#5c635f",
+          "#7d8480",
+          "#9fa7a3",
+          "#c3cbc7",
+          "#e8f1ec"
+        ]
+      },
+      "leader": {
+        "role": "secondary",
+        "displayName": "Azul de Líder",
+        "canonical": "#8db4e0",
+        "tonalRamp": [
+          "#000929",
+          "#012548",
+          "#214469",
+          "#40648b",
+          "#6085af",
+          "#82a9d4",
+          "#a5cdfa",
+          "#caf3ff"
+        ]
+      },
+      "contend": {
+        "role": "primary",
+        "displayName": "Âmbar de Suporte",
+        "canonical": "#e0ab45",
+        "tonalRamp": [
+          "#240000",
+          "#441600",
+          "#653500",
+          "#875600",
+          "#aa7800",
+          "#cf9b32",
+          "#f5bf5b",
+          "#ffe582"
+        ]
+      },
+      "passed": {
+        "role": "secondary",
+        "displayName": "Cinza de Ultrapassada",
+        "canonical": "#8a948e",
+        "tonalRamp": [
+          "#060d09",
+          "#1f2723",
+          "#3c443f",
+          "#5b645e",
+          "#7b857f",
+          "#9ea8a2",
+          "#c2ccc6",
+          "#e7f2eb"
+        ]
+      },
+      "pen": {
+        "role": "tertiary",
+        "displayName": "Caneta Vermelha",
+        "canonical": "#b3271a",
+        "tonalRamp": [
+          "#3a0000",
+          "#610000",
+          "#880000",
+          "#b02317",
+          "#d84d3c",
+          "#ff725f",
+          "#ff9782",
+          "#ffbda6"
+        ]
+      },
+      "pen-on-rack": {
+        "role": "tertiary",
+        "displayName": "Caneta sobre Rack",
+        "canonical": "#f08a78",
+        "tonalRamp": [
+          "#2f0000",
+          "#530000",
+          "#771c10",
+          "#9d3f31",
+          "#c36251",
+          "#ea8573",
+          "#ffa996",
+          "#ffceba"
+        ]
+      },
+      "accent-text": {
+        "role": "neutral",
+        "displayName": "Texto de Acento",
+        "canonical": "#e0ab45",
+        "tonalRamp": [
+          "#240000",
+          "#441600",
+          "#653500",
+          "#875600",
+          "#aa7800",
+          "#cf9b32",
+          "#f5bf5b",
+          "#ffe582"
+        ]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Foco",
+        "canonical": "#f0c75e",
+        "tonalRamp": [
+          "#200000",
+          "#3f1b00",
+          "#5f3a00",
+          "#805a00",
+          "#a37c00",
+          "#c79f31",
+          "#edc45b",
+          "#ffea81"
+        ]
+      },
+      "action-bg": {
+        "role": "primary",
+        "displayName": "Ação",
+        "canonical": "#e0ab45",
+        "tonalRamp": [
+          "#240000",
+          "#441600",
+          "#653500",
+          "#875600",
+          "#aa7800",
+          "#cf9b32",
+          "#f5bf5b",
+          "#ffe582"
+        ]
+      },
+      "action-ink": {
+        "role": "neutral",
+        "displayName": "Tinta da Ação",
+        "canonical": "#1a1e1c",
+        "tonalRamp": [
+          "#090c0a",
+          "#222624",
+          "#3f4341",
+          "#5e6260",
+          "#7f8481",
+          "#a1a6a4",
+          "#c5cbc8",
+          "#eaf0ed"
+        ]
+      },
+      "state-ok": {
+        "role": "neutral",
+        "displayName": "Conexão OK",
+        "canonical": "#8fd19e",
+        "tonalRamp": [
+          "#001400",
+          "#003106",
+          "#065024",
+          "#307143",
+          "#539363",
+          "#76b785",
+          "#99dca8",
+          "#beffcd"
+        ]
+      },
+      "state-wait": {
+        "role": "neutral",
+        "displayName": "Conexão em Espera",
+        "canonical": "#e0ab45",
+        "tonalRamp": [
+          "#240000",
+          "#441600",
+          "#653500",
+          "#875600",
+          "#aa7800",
+          "#cf9b32",
+          "#f5bf5b",
+          "#ffe582"
+        ]
+      },
+      "state-off": {
+        "role": "neutral",
+        "displayName": "Conexão Desligada",
+        "canonical": "#aebbb3",
+        "tonalRamp": [
+          "#050e08",
+          "#1e2822",
+          "#3a453e",
+          "#59655d",
+          "#7a867e",
+          "#9ca9a1",
+          "#c0cdc5",
+          "#e5f2ea"
+        ]
+      },
+      "rack-light": {
+        "role": "neutral",
+        "displayName": "Rack Grafite-Esverdeado (claro)",
+        "canonical": "#b4c1b8",
+        "tonalRamp": [
+          "#050e08",
+          "#1e2821",
+          "#3a453e",
+          "#59655d",
+          "#7a867e",
+          "#9ca9a0",
+          "#c0cdc4",
+          "#e5f3e9"
+        ]
+      },
+      "rack-2-light": {
+        "role": "neutral",
+        "displayName": "Rack Elevado (claro)",
+        "canonical": "#c5d0c8",
+        "tonalRamp": [
+          "#060d08",
+          "#1f2722",
+          "#3c453e",
+          "#5a645d",
+          "#7b857e",
+          "#9ea8a0",
+          "#c1ccc4",
+          "#e7f2ea"
+        ]
+      },
+      "rack-line-light": {
+        "role": "neutral",
+        "displayName": "Linha do Rack (claro)",
+        "canonical": "#8b9d92",
+        "tonalRamp": [
+          "#030e07",
+          "#1a2920",
+          "#36463d",
+          "#55665c",
+          "#76877d",
+          "#98aa9f",
+          "#bccfc3",
+          "#e1f4e8"
+        ]
+      },
+      "ink-light": {
+        "role": "neutral",
+        "displayName": "Tinta (claro)",
+        "canonical": "#131d18",
+        "tonalRamp": [
+          "#050d09",
+          "#1d2823",
+          "#3a453f",
+          "#59645e",
+          "#79867f",
+          "#9ca9a2",
+          "#c0cdc6",
+          "#e5f2eb"
+        ]
+      },
+      "ink-2-light": {
+        "role": "neutral",
+        "displayName": "Tinta Secundária (claro)",
+        "canonical": "#2b3a32",
+        "tonalRamp": [
+          "#030e08",
+          "#1a2921",
+          "#37463e",
+          "#56665d",
+          "#76877e",
+          "#98aaa0",
+          "#bccec4",
+          "#e1f4e9"
+        ]
+      },
+      "paper-light": {
+        "role": "neutral",
+        "displayName": "Papel Marfim (claro)",
+        "canonical": "#fbf8ec",
+        "tonalRamp": [
+          "#0d0b04",
+          "#27251c",
+          "#444238",
+          "#646157",
+          "#858278",
+          "#a8a59a",
+          "#ccc9be",
+          "#f2efe3"
+        ]
+      },
+      "paper-ink-light": {
+        "role": "neutral",
+        "displayName": "Tinta de Papel (claro)",
+        "canonical": "#171b19",
+        "tonalRamp": [
+          "#090c0a",
+          "#222624",
+          "#3f4341",
+          "#5e6360",
+          "#7f8481",
+          "#a1a6a4",
+          "#c5cbc8",
+          "#eaf0ed"
+        ]
+      },
+      "paper-ink-2-light": {
+        "role": "neutral",
+        "displayName": "Tinta de Papel Secundária (claro)",
+        "canonical": "#4a514c",
+        "tonalRamp": [
+          "#070d09",
+          "#212722",
+          "#3d443f",
+          "#5c635e",
+          "#7d857f",
+          "#9fa7a2",
+          "#c3ccc6",
+          "#e9f1eb"
+        ]
+      },
+      "strip-edge-light": {
+        "role": "neutral",
+        "displayName": "Borda da Tira (claro)",
+        "canonical": "#33403a",
+        "tonalRamp": [
+          "#040e09",
+          "#1c2823",
+          "#38463f",
+          "#57655e",
+          "#78867f",
+          "#9aa9a2",
+          "#becdc6",
+          "#e3f3eb"
+        ]
+      },
+      "leader-light": {
+        "role": "secondary",
+        "displayName": "Azul de Líder (claro)",
+        "canonical": "#2b5c97",
+        "tonalRamp": [
+          "#000137",
+          "#002258",
+          "#0e427a",
+          "#31629e",
+          "#5285c3",
+          "#74a8e9",
+          "#98cdff",
+          "#bcf3ff"
+        ]
+      },
+      "contend-light": {
+        "role": "primary",
+        "displayName": "Âmbar de Suporte (claro)",
+        "canonical": "#b7791a",
+        "tonalRamp": [
+          "#270000",
+          "#481000",
+          "#6a3100",
+          "#8d5100",
+          "#b1730f",
+          "#d69640",
+          "#fdbb66",
+          "#ffe08c"
+        ]
+      },
+      "passed-light": {
+        "role": "secondary",
+        "displayName": "Cinza de Ultrapassada (claro)",
+        "canonical": "#6d7872",
+        "tonalRamp": [
+          "#060d09",
+          "#1e2823",
+          "#3b453f",
+          "#5a645e",
+          "#7a857f",
+          "#9da8a2",
+          "#c0cdc6",
+          "#e6f2eb"
+        ]
+      },
+      "pen-on-rack-light": {
+        "role": "tertiary",
+        "displayName": "Caneta sobre Rack (claro)",
+        "canonical": "#8f1d12",
+        "tonalRamp": [
+          "#340000",
+          "#5a0000",
+          "#7f0601",
+          "#a63527",
+          "#cd5949",
+          "#f57c6a",
+          "#ffa18d",
+          "#ffc6b1"
+        ]
+      },
+      "accent-text-light": {
+        "role": "neutral",
+        "displayName": "Texto de Acento (claro)",
+        "canonical": "#6b4300",
+        "tonalRamp": [
+          "#200000",
+          "#3f1a00",
+          "#5f3800",
+          "#81581e",
+          "#a47942",
+          "#c99c64",
+          "#efc087",
+          "#ffe5ac"
+        ]
+      },
+      "focus-light": {
+        "role": "neutral",
+        "displayName": "Foco (claro)",
+        "canonical": "#0b3d91",
+        "tonalRamp": [
+          "#010048",
+          "#00176b",
+          "#083b8f",
+          "#2b5db4",
+          "#4c80da",
+          "#6ea4ff",
+          "#91c9ff",
+          "#b5efff"
+        ]
+      },
+      "action-bg-light": {
+        "role": "primary",
+        "displayName": "Ação (claro)",
+        "canonical": "#16241c",
+        "tonalRamp": [
+          "#030e07",
+          "#1b2921",
+          "#37463d",
+          "#56665c",
+          "#76877d",
+          "#99aa9f",
+          "#bccec3",
+          "#e1f4e8"
+        ]
+      },
+      "action-ink-light": {
+        "role": "neutral",
+        "displayName": "Tinta da Ação (claro)",
+        "canonical": "#f4f0e0",
+        "tonalRamp": [
+          "#0e0b03",
+          "#282519",
+          "#454235",
+          "#656154",
+          "#868274",
+          "#a9a596",
+          "#cdc9ba",
+          "#f3efdf"
+        ]
+      },
+      "state-ok-light": {
+        "role": "neutral",
+        "displayName": "Conexão OK (claro)",
+        "canonical": "#1d6b34",
+        "tonalRamp": [
+          "#001500",
+          "#003200",
+          "#00521c",
+          "#26733b",
+          "#4b955b",
+          "#6fb97d",
+          "#93dea0",
+          "#b7ffc5"
+        ]
+      },
+      "state-wait-light": {
+        "role": "neutral",
+        "displayName": "Conexão em Espera (claro)",
+        "canonical": "#8a5a00",
+        "tonalRamp": [
+          "#230000",
+          "#421700",
+          "#633600",
+          "#855600",
+          "#a9772e",
+          "#ce9a53",
+          "#f4be77",
+          "#ffe49c"
+        ]
+      },
+      "state-off-light": {
+        "role": "neutral",
+        "displayName": "Conexão Desligada (claro)",
+        "canonical": "#2b3a32",
+        "tonalRamp": [
+          "#030e08",
+          "#1a2921",
+          "#37463e",
+          "#56665d",
+          "#76877e",
+          "#98aaa0",
+          "#bccec4",
+          "#e1f4e9"
+        ]
+      },
+      "control-line": {
+        "role": "neutral",
+        "displayName": "Linha do Rack",
+        "canonical": "#6d8177",
+        "tonalRamp": [
+          "#030e08",
+          "#1b2921",
+          "#37463e",
+          "#56665d",
+          "#76877e",
+          "#99aaa0",
+          "#bccec4",
+          "#e1f4ea"
+        ]
+      },
+      "control-line-light": {
+        "role": "neutral",
+        "displayName": "Linha do Rack (claro)",
+        "canonical": "#4a5d52",
+        "tonalRamp": [
+          "#030e07",
+          "#1a2920",
+          "#36463d",
+          "#55665c",
+          "#76877d",
+          "#98aa9f",
+          "#bccfc3",
+          "#e1f4e8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Taxa da tira líder (4 rem; 3 rem no celular)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Título da vista (h1)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Subtítulos, financiador, taxa das tiras, marca e resultado."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto corrido, navegação e prazo, com numerais tabulares."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Rótulos de estado, cabeçalho de colunas e selos; caixa alta, 0,06 em."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Monoespaçada do sistema para ID, horário e campo de ID."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Única curva do sistema: entrada, reordenação, carimbo e hover."
+      },
+      {
+        "name": "strip-in",
+        "value": "220ms ease-out; translateY(-0.5rem) e opacidade",
+        "purpose": "Entrada de uma tira nova no rack."
+      },
+      {
+        "name": "strip-slide",
+        "value": "260ms ease-out; translateY da posição anterior",
+        "purpose": "Reordenação das tiras quando a regra muda a posição (Web Animations, dispensada com movimento reduzido)."
+      },
+      {
+        "name": "stamp-in",
+        "value": "260ms ease-out; rotate(-3deg) scale(1.5)",
+        "purpose": "Carimbo da vencedora no fechamento."
+      },
+      {
+        "name": "button-hover",
+        "value": "150ms ease-out; background-color",
+        "purpose": "Hover de botão."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none; transition: none",
+        "purpose": "Sob prefers-reduced-motion: reduce tudo é desligado."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "52rem (max-width)"
+      }
+    ],
+    "spacing": {
+      "note": "Escala em rem: 0.25, 0.5, 0.75, 1, 1.5, 2 (--space-1 a --space-8, sem 5 e 7)."
+    }
+  },
+  "components": [
+    {
+      "name": "Tira em disputa",
+      "kind": "card",
+      "refersTo": "strip",
+      "description": "Tira de papel marfim com suporte âmbar: lance que não lidera. Uma linha de 4,5 rem.",
+      "html": "<div class=\"ds-rack\"><div class=\"ds-strip\"><span class=\"ds-holder\"></span><span class=\"ds-pos\">2º</span><span class=\"ds-who\"><span class=\"ds-funder\">funder-2</span><strong class=\"ds-tag\">Em disputa</strong></span><span class=\"ds-rate\">2,15%</span><span class=\"ds-term\">18 meses</span><time class=\"ds-time\">14:02:11</time></div></div>",
+      "css": ".ds-rack{display:grid;gap:.5rem;padding:.5rem;background:var(--rack-2, #243029);border:1px solid var(--rack-line, #3a4941)}.ds-strip{display:grid;grid-template-columns:1.5rem 2.5rem minmax(0,1fr) 6rem 5rem 5.5rem;align-items:center;gap:.75rem;min-height:4.5rem;padding-right:1rem;background:var(--paper, #f2eedd);color:var(--paper-ink, #1a1e1c);border:1px solid var(--strip-edge, #0f1512);border-radius:2px;font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-weight:500;font-size:1.125rem}.ds-holder{align-self:stretch;margin:.375rem 0 .375rem .375rem;border:1px solid var(--strip-edge, #0f1512);border-radius:2px;background:var(--contend, #e0ab45)}.ds-pos{text-align:right;font-weight:700;color:var(--paper-ink-2, #4f5651)}.ds-who{display:grid}.ds-funder{font-size:1.5rem;font-weight:700}.ds-tag{font-size:1rem;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-ink-2, #4f5651)}.ds-rate{text-align:right;font-size:1.5rem;font-weight:700}.ds-term{text-align:right}.ds-time{text-align:right;font-family:var(--font-data, ui-monospace, 'SF Mono', Menlo, Consolas, monospace);font-size:1rem}"
+    },
+    {
+      "name": "Tira líder",
+      "kind": "card",
+      "refersTo": "strip-leader",
+      "description": "Líder: suporte azul, borda de 2 px, 8 rem de altura e taxa em numeral de 4 rem.",
+      "html": "<div class=\"ds-rack\"><div class=\"ds-strip ds-leader\"><span class=\"ds-holder\"></span><span class=\"ds-pos\">1º</span><span class=\"ds-who\"><span class=\"ds-funder\">funder-1</span><strong class=\"ds-tag\">Melhor lance</strong></span><span class=\"ds-rate\">1,90%</span><span class=\"ds-term\">12 meses</span><time class=\"ds-time\">14:02:08</time></div></div>",
+      "css": ".ds-rack{display:grid;gap:.5rem;padding:.5rem;background:var(--rack-2, #243029);border:1px solid var(--rack-line, #3a4941)}.ds-strip{display:grid;grid-template-columns:1.5rem 2.5rem minmax(0,1fr) 6rem 5rem 5.5rem;align-items:center;gap:.75rem;min-height:4.5rem;padding-right:1rem;background:var(--paper, #f2eedd);color:var(--paper-ink, #1a1e1c);border:1px solid var(--strip-edge, #0f1512);border-radius:2px;font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-weight:500;font-size:1.125rem}.ds-holder{align-self:stretch;margin:.375rem 0 .375rem .375rem;border:1px solid var(--strip-edge, #0f1512);border-radius:2px;background:var(--contend, #e0ab45)}.ds-pos{text-align:right;font-weight:700;color:var(--paper-ink-2, #4f5651)}.ds-who{display:grid}.ds-funder{font-size:1.5rem;font-weight:700}.ds-tag{font-size:1rem;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-ink-2, #4f5651)}.ds-rate{text-align:right;font-size:1.5rem;font-weight:700}.ds-term{text-align:right}.ds-time{text-align:right;font-family:var(--font-data, ui-monospace, 'SF Mono', Menlo, Consolas, monospace);font-size:1rem}.ds-leader{min-height:8rem;border-width:2px}.ds-leader .ds-holder{background:var(--leader, #8db4e0)}.ds-leader .ds-rate{font-size:4rem;line-height:1}.ds-leader .ds-tag{color:var(--paper-ink, #1a1e1c)}"
+    },
+    {
+      "name": "Tira ultrapassada",
+      "kind": "card",
+      "refersTo": "strip-passed",
+      "description": "Já liderou e foi superada: borda tracejada, suporte cinza e cruz de caneta no rótulo.",
+      "html": "<div class=\"ds-rack\"><div class=\"ds-strip ds-passed\"><span class=\"ds-holder\"></span><span class=\"ds-pos\">3º</span><span class=\"ds-who\"><span class=\"ds-funder\">funder-3</span><strong class=\"ds-tag\">Ultrapassada</strong></span><span class=\"ds-rate\">2,60%</span><span class=\"ds-term\">24 meses</span><time class=\"ds-time\">14:02:14</time></div></div>",
+      "css": ".ds-rack{display:grid;gap:.5rem;padding:.5rem;background:var(--rack-2, #243029);border:1px solid var(--rack-line, #3a4941)}.ds-strip{display:grid;grid-template-columns:1.5rem 2.5rem minmax(0,1fr) 6rem 5rem 5.5rem;align-items:center;gap:.75rem;min-height:4.5rem;padding-right:1rem;background:var(--paper, #f2eedd);color:var(--paper-ink, #1a1e1c);border:1px solid var(--strip-edge, #0f1512);border-radius:2px;font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-weight:500;font-size:1.125rem}.ds-holder{align-self:stretch;margin:.375rem 0 .375rem .375rem;border:1px solid var(--strip-edge, #0f1512);border-radius:2px;background:var(--contend, #e0ab45)}.ds-pos{text-align:right;font-weight:700;color:var(--paper-ink-2, #4f5651)}.ds-who{display:grid}.ds-funder{font-size:1.5rem;font-weight:700}.ds-tag{font-size:1rem;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-ink-2, #4f5651)}.ds-rate{text-align:right;font-size:1.5rem;font-weight:700}.ds-term{text-align:right}.ds-time{text-align:right;font-family:var(--font-data, ui-monospace, 'SF Mono', Menlo, Consolas, monospace);font-size:1rem}.ds-passed{border-style:dashed;color:var(--paper-ink-2, #4f5651)}.ds-passed .ds-holder{background:var(--passed, #8a948e)}.ds-passed .ds-tag::before{content:'';display:inline-block;width:.75rem;height:.75rem;margin-right:.25rem;background:linear-gradient(to top right,transparent calc(50% - 1px),var(--pen, #b3271a) 50%,transparent calc(50% + 1px)),linear-gradient(to bottom right,transparent calc(50% - 1px),var(--pen, #b3271a) 50%,transparent calc(50% + 1px))}"
+    },
+    {
+      "name": "Carimbo",
+      "kind": "chip",
+      "refersTo": "stamp",
+      "description": "Rótulo da tira vencedora no fechamento: caneta vermelha, inclinado, contorno de 2 px.",
+      "html": "<strong class=\"ds-stamp\">Vencedora</strong>",
+      "css": ".ds-stamp{display:inline-block;padding:0 .5rem;border:2px solid var(--pen, #b3271a);color:var(--pen, #b3271a);font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-size:1rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transform:rotate(-3deg)}"
+    },
+    {
+      "name": "Tira de arquivo",
+      "kind": "card",
+      "refersTo": "archive-strip",
+      "description": "Leilão já acompanhado, com aba dobrada na última visitada.",
+      "html": "<div class=\"ds-arch\"><span class=\"ds-arch-holder\"></span><a class=\"ds-arch-id\" href=\"#\">3f9c2a10-7b1e-4c55-9a3d-0e8f1a2b4c66</a><span class=\"ds-arch-out\">Vencedor funder-1 a 1,90%</span><span class=\"ds-arch-marks\"><strong>Último acompanhado</strong></span></div>",
+      "css": ".ds-arch{position:relative;display:grid;grid-template-columns:1.5rem minmax(0,1fr) auto;grid-template-areas:'h id out' 'h m m';align-items:center;column-gap:.75rem;min-height:3.5rem;padding-right:1.5rem;background:var(--paper, #f2eedd);color:var(--paper-ink, #1a1e1c);border:1px solid var(--strip-edge, #0f1512);border-radius:2px;font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-size:1.125rem;font-weight:500}.ds-arch-holder{grid-area:h;align-self:stretch;margin:.375rem 0 .375rem .375rem;border:1px solid var(--strip-edge, #0f1512);border-radius:2px;background:var(--leader, #8db4e0)}.ds-arch-id{grid-area:id;color:var(--paper-ink, #1a1e1c);font-family:var(--font-data, ui-monospace, monospace);font-size:1.0625rem;overflow-wrap:anywhere}.ds-arch-out{grid-area:out;font-weight:700}.ds-arch-marks{grid-area:m;font-size:1rem;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-ink-2, #4f5651)}.ds-arch::after{content:'';position:absolute;top:0;right:0;width:1.25rem;height:1.25rem;background:linear-gradient(225deg,var(--rack, #1c2622) 50%,var(--pen, #b3271a) 50%)}"
+    },
+    {
+      "name": "Barra do shell",
+      "kind": "nav",
+      "refersTo": "bar",
+      "description": "Marca, navegação, estado da conexão (por forma e texto) e tema.",
+      "html": "<header class=\"ds-bar\"><span class=\"ds-brand\">CaaS Leilão</span><nav class=\"ds-nav\"><a class=\"ds-current\" href=\"#\">Ao vivo</a><a href=\"#\">Histórico</a></nav><div class=\"ds-tools\"><span class=\"ds-status\"><i class=\"ds-mark\"></i>Conectado</span><a class=\"ds-tool\" href=\"#\">Trace</a><a class=\"ds-tool\" href=\"#\">Métricas</a><button class=\"ds-btn\" type=\"button\">Alternar tema</button></div></header>",
+      "css": ".ds-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.5rem;padding:.75rem 1.5rem;background:var(--rack, #1c2622);color:var(--ink, #e8eee9);border-bottom:1px solid var(--rack-line, #3a4941);font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-size:1.125rem;font-weight:500}.ds-brand{font-size:1.5rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}.ds-nav{display:flex;gap:1rem}.ds-nav a{padding:.25rem 0;color:var(--ink-2, #aebbb3);text-decoration:none;border-bottom:2px solid transparent}.ds-nav a:hover{color:var(--ink, #e8eee9)}.ds-nav a.ds-current{color:var(--ink, #e8eee9);border-bottom-color:var(--contend, #e0ab45)}.ds-tools{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin-left:auto}.ds-status{display:inline-flex;align-items:center;gap:.5rem;font-weight:600;color:var(--ink, #e8eee9)}.ds-mark{width:.75rem;height:.75rem;background:var(--state-ok, #8fd19e);border:2px solid var(--state-ok, #8fd19e)}.ds-tool{color:var(--ink-2, #aebbb3)}.ds-btn{min-height:2.5rem;padding:0 1rem;border:1px solid var(--rack-line, #3a4941);border-radius:2px;background:transparent;color:var(--ink, #e8eee9);font:inherit;font-weight:600;cursor:pointer;transition:background-color 150ms cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--rack-2, #243029)}.ds-btn:focus-visible,.ds-nav a:focus-visible{outline:2px solid var(--focus, #f0c75e);outline-offset:2px}"
+    },
+    {
+      "name": "Botão primário",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal (Acompanhar): fundo de ação, canto de 2 px, 2,5 rem de altura.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Acompanhar</button>",
+      "css": ".ds-primary{min-height:2.5rem;padding:0 1rem;border:1px solid var(--action-bg, #e0ab45);border-radius:2px;background:var(--action-bg, #e0ab45);color:var(--action-ink, #1a1e1c);font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif);font-size:1.125rem;font-weight:600;cursor:pointer;transition:background-color 150ms cubic-bezier(.16,1,.3,1)}.ds-primary:hover{filter:brightness(1.08)}.ds-primary:active{transform:translateY(1px)}.ds-primary:focus-visible{outline:2px solid var(--focus, #f0c75e);outline-offset:2px}"
+    },
+    {
+      "name": "Campo de ID",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo do ID da proposta em monoespaçada, com rótulo visível acima.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-id\">ID da proposta</label><input id=\"ds-id\" class=\"ds-input\" type=\"text\" placeholder=\"00000000-0000-0000-0000-000000000000\"></div>",
+      "css": ".ds-field{display:grid;gap:.5rem;color:var(--ink, #e8eee9);font-family:var(--font-ui, 'Barlow Condensed', 'Arial Narrow', sans-serif)}.ds-field label{color:var(--ink-2, #aebbb3);font-size:1.0625rem;font-weight:600}.ds-input{min-height:2.5rem;padding:0 .75rem;border:1px solid var(--rack-line, #3a4941);border-radius:2px;background:var(--rack-2, #243029);color:var(--ink, #e8eee9);font-family:var(--font-data, ui-monospace, monospace);font-size:1.0625rem}.ds-input::placeholder{color:var(--ink-2, #aebbb3)}.ds-input:focus-visible{outline:2px solid var(--focus, #f0c75e);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Baia de Controle",
+    "overview": "A tela é uma baia de controle de tráfego aéreo. Um rack grafite-esverdeado é o único campo de cor; sobre ele, cada lance é uma tira de papel marfim inserida num suporte de plástico. A posição da tira no rack é a posição que a regra de desempate lhe dá, e a regra (menor taxa, depois menor prazo, depois lance mais antigo) fica impressa ao lado. A aviação entra só na gramática (tira, suporte, rack, baia, carimbo); os textos são pt-BR simples.\n\nO sistema existe em dois climas do mesmo lugar: escuro por padrão (cabine à noite, projetor em sala reduzida) e claro (sala com luz de leitura). O tema segue a preferência do sistema até o usuário escolher; a escolha fica salva no navegador. Numerais e rótulos são condensados e firmes, dados de máquina (ID, horário) em monoespaçada. Tudo é reto, plano e alinhado por colunas compartilhadas: o rack é uma estrutura, não uma pilha de cartões. Movimento só comunica estado: a tira entra, a tira sobe ou desce, o carimbo cai no fechamento.",
+    "keyCharacteristics": [
+      "Um campo de cor (rack) e uma superfície de dado (papel marfim); nada mais compete.",
+      "Estado dito três vezes: cor do suporte, padrão de borda da tira e rótulo de texto.",
+      "Caneta vermelha reservada às marcas: carimbo, cruz de ultrapassada, aba dobrada de \"onde parei\".",
+      "Plano, sem sombras; profundidade por camadas tonais e bordas de 1 a 2 px.",
+      "Densidade de projeção: nenhum texto abaixo de 1 rem, numerais de líder em 4 rem.",
+      "Modo Operate, pt-BR, WCAG AA nos dois temas, movimento respeitando `prefers-reduced-motion`."
+    ],
+    "rules": [
+      {
+        "name": "The One Field Rule",
+        "body": "O rack é o único campo de cor. Azul, âmbar e cinza aparecem só como suporte de tira (peça pequena e inserida) e nunca como fundo de painel, botão de contexto ou texto corrido.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pen Rule",
+        "body": "Vermelho é caneta: só marca sobre uma tira (carimbo, cruz, aba) ou o contorno do resultado. Não é cor de erro nem de perda; a mensagem de erro do campo usa borda de `accent-text`, não vermelho.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Trading Board Rule",
+        "body": "Verde e vermelho nunca codificam subida e descida de taxa. O verde só existe no marcador de conexão.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Uma condensada para tudo que é rótulo e numeral, uma monoespaçada para dado de máquina. Nenhuma terceira família.",
+        "section": "typography"
+      },
+      {
+        "name": "The Floor Rule",
+        "body": "Nada abaixo de 1 rem: a tela é lida projetada.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Rack Rule",
+        "body": "Nenhum `box-shadow`, blur ou vidro. Profundidade é tom de fundo mais borda.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Declared Once Rule",
+        "body": "A única elevação do sistema é rack, moldura, papel. Nenhum componente cria uma quarta camada.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** dizer o estado de três formas: suporte colorido, padrão de borda e rótulo de texto.",
+      "**Do** manter a regra de desempate impressa ao lado do rack, com as três prioridades numeradas.",
+      "**Do** alinhar trilho, tiras e baias pelas mesmas colunas (`--cols`).",
+      "**Do** usar caneta vermelha só como marca sobre uma tira: carimbo, cruz e aba.",
+      "**Do** limitar movimento a estado (entrada, reordenação, carimbo) com `--ease-out` e desligá-lo em `prefers-reduced-motion: reduce`.",
+      "**Do** manter texto de leitura em 1 rem ou mais e usar `accent-text` (não `contend`) para texto âmbar.",
+      "**Do** assinalar o modo demonstração com o selo tracejado na barra."
+    ],
+    "donts": [
+      "**Don't** usar eyebrow, kicker ou rótulo decorativo acima de títulos.",
+      "**Don't** repetir cartões iguais soltos sobre neutro: a estrutura é o rack com colunas, não uma grade de cartões.",
+      "**Don't** usar borda lateral colorida grossa como acento; a cor de estado vive no suporte, peça inserida com margem e contorno próprios.",
+      "**Don't** usar listras, faixas ou padrões decorativos.",
+      "**Don't** usar sombra (dura ou difusa), vidro, blur ou gradiente de texto.",
+      "**Don't** usar verde e vermelho como placar de subida e descida, nem vermelho como cor de erro.",
+      "**Don't** aninhar cartões dentro de cartões.",
+      "**Don't** mostrar contagem regressiva, barra de progresso de prazo ou qualquer dado que o sistema não fornece.",
+      "**Don't** carregar fontes ou ativos de terceiros em execução; a fonte é auto-hospedada.",
+      "**Don't** introduzir uma terceira família tipográfica nem cor de suporte fora de azul, âmbar e cinza."
+    ]
+  }
+}
