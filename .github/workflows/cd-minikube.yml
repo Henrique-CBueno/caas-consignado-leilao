@@ -3,9 +3,11 @@ name: cd-minikube
 # Prova o fluxo feliz completo (Milestone 8) rodando dentro de um cluster
 # minikube efêmero do próprio runner do GitHub Actions — não só na máquina do
 # desenvolvedor (make deploy-local/make smoke-test já validados na Milestone 9).
+# Disparo manual: o runner gratuito (2 vCPU/7 GB) não sustenta nem a topologia
+# slim de forma confiável (API server do minikube fica sem resposta) — ver
+# ADR-0009. O ci.yml segue rodando a cada push.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy-and-smoke-test:
