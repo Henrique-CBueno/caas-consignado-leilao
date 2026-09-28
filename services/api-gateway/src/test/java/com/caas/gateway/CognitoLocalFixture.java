@@ -30,12 +30,35 @@ final class CognitoLocalFixture {
         this.clientId = call("CreateUserPoolClient", Map.of(
             "UserPoolId", poolId,
             "ClientName", "test-client",
-            "ExplicitAuthFlows", List.of("ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH")
+            "ExplicitAuthFlows", List.of("ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH")
         )).path("UserPoolClient").path("ClientId").asText();
     }
 
     String jwkSetUri() {
         return baseUrl + "/" + poolId + "/.well-known/jwks.json";
+    }
+
+    String baseUri() {
+        return baseUrl;
+    }
+
+    String clientId() {
+        return clientId;
+    }
+
+    // Cria o usuário com senha permanente, sem devolver token — para os testes de /auth/login
+    // que autenticam via HTTP (fluxo público), não via AdminInitiateAuth.
+    void createUser(String username, String tenantClaim) throws IOException, InterruptedException {
+        List<Map<String, String>> attributes = tenantClaim == null
+            ? List.of()
+            : List.of(Map.of("Name", "custom:tenant_id", "Value", tenantClaim));
+        call("AdminCreateUser", Map.of(
+            "UserPoolId", poolId, "Username", username, "TemporaryPassword", "Temp1234!",
+            "MessageAction", "SUPPRESS", "UserAttributes", attributes
+        ));
+        call("AdminSetUserPassword", Map.of(
+            "UserPoolId", poolId, "Username", username, "Password", "Passw0rd1!", "Permanent", true
+        ));
     }
 
     // tenantClaim == null cria o usuário sem o atributo customizado.

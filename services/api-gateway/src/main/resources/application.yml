@@ -9,6 +9,11 @@ spring:
 app:
   cognito:
     jwk-set-uri: ${APP_COGNITO_JWK_SET_URI:https://example.invalid/.well-known/jwks.json}
+    base-uri: ${APP_COGNITO_BASE_URI:http://cognito-local:9229}
+    client-id: ${APP_COGNITO_CLIENT_ID:}
+  auth:
+    # Senha fixa dos 3 tenants de demonstração (ADR-0017); nunca um segredo real.
+    demo-password: ${APP_AUTH_DEMO_PASSWORD:Passw0rd1!}
   routes:
     tenant-service-uri: ${APP_ROUTES_TENANT_SERVICE_URI:http://localhost:1}
     proposal-service-uri: ${APP_ROUTES_PROPOSAL_SERVICE_URI:http://localhost:1}

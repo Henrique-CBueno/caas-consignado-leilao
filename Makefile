@@ -82,7 +82,7 @@ deploy-local:
 	$(if $(SLIM),,kubectl delete pod cognito-bootstrap -n $(K8S_NS) --ignore-not-found)
 	$(if $(SLIM),,kubectl apply -f $(K8S_DIR)/cognito/bootstrap/bootstrap-pod.yaml)
 	$(if $(SLIM),,kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/cognito-bootstrap -n $(K8S_NS) --timeout=180s)
-	$(if $(SLIM),,POOL=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^POOL_ID=//p'); kubectl delete pod cognito-bootstrap -n $(K8S_NS); kubectl set env deploy/api-gateway -n $(K8S_NS) APP_COGNITO_JWK_SET_URI=http://cognito-local:9229/$$POOL/.well-known/jwks.json)
+	$(if $(SLIM),,POOL=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^POOL_ID=//p'); CLIENT=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^CLIENT_ID=//p'); kubectl delete pod cognito-bootstrap -n $(K8S_NS); kubectl set env deploy/api-gateway -n $(K8S_NS) APP_COGNITO_JWK_SET_URI=http://cognito-local:9229/$$POOL/.well-known/jwks.json APP_COGNITO_CLIENT_ID=$$CLIENT)
 	$(if $(SLIM),,kubectl rollout status deploy/api-gateway -n $(K8S_NS) --timeout=300s)
 	# 600s: runners de CI têm bem menos CPU que uma máquina de desenvolvedor
 	# (2 vCPUs no GitHub Actions) — pods subindo juntos com pull de imagem a
