@@ -13,9 +13,12 @@ import au.com.dius.pact.core.model.annotations.Pact;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.caas.observability.TraceContextStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +31,8 @@ import org.slf4j.LoggerFactory;
 @ExtendWith(PactConsumerTestExt.class)
 @PactTestFor(providerName = "auction-service", pactVersion = PactSpecVersion.V3)
 class BidSubmitterContractTest {
+
+    private static final TraceContextStore NO_TRACING = new TraceContextStore(Tracer.NOOP, Propagator.NOOP);
 
     static final UUID OPEN_AUCTION = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
@@ -56,7 +61,7 @@ class BidSubmitterContractTest {
     }
 
     private BidSubmitter submitterFor(MockServer server) {
-        return new BidSubmitter(server.getUrl(), new ObjectMapper(), registry);
+        return new BidSubmitter(server.getUrl(), new ObjectMapper(), registry, NO_TRACING);
     }
 
     private CircuitBreaker breaker() {

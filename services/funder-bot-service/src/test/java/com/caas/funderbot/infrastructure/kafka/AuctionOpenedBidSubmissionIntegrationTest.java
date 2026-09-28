@@ -23,6 +23,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -32,6 +33,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
+@AutoConfigureObservability
 @Testcontainers
 class AuctionOpenedBidSubmissionIntegrationTest {
 
@@ -41,6 +43,7 @@ class AuctionOpenedBidSubmissionIntegrationTest {
     static HttpServer auctionServiceStub;
     static final List<String> receivedPaths = new CopyOnWriteArrayList<>();
     static final List<String> receivedBodies = new CopyOnWriteArrayList<>();
+    static final List<String> receivedTraceparents = new CopyOnWriteArrayList<>();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) throws Exception {
@@ -51,6 +54,7 @@ class AuctionOpenedBidSubmissionIntegrationTest {
         auctionServiceStub = HttpServer.create(new InetSocketAddress(0), 0);
         auctionServiceStub.createContext("/", exchange -> {
             receivedPaths.add(exchange.getRequestURI().toString());
+            receivedTraceparents.add(String.valueOf(exchange.getRequestHeaders().getFirst("traceparent")));
             receivedBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             exchange.sendResponseHeaders(200, -1);
             exchange.close();
@@ -64,6 +68,7 @@ class AuctionOpenedBidSubmissionIntegrationTest {
     void clearReceived() {
         receivedPaths.clear();
         receivedBodies.clear();
+        receivedTraceparents.clear();
     }
 
     @AfterEach
@@ -101,6 +106,28 @@ class AuctionOpenedBidSubmissionIntegrationTest {
     }
 
     @Test
+    void eachBidCarriesTheTraceOfTheAuctionOpenedEventThatTriggeredIt() throws Exception {
+        String traceId = "6df92f3577b34da6a3ce929d0e0e4736";
+        UUID proposalId = UUID.randomUUID();
+        Instant now = Instant.now();
+        AuctionOpenedEvent auctionOpened = new AuctionOpenedEvent(
+            proposalId, UUID.randomUUID(),
+            List.of("funder-1", "funder-2", "funder-3"),
+            now, now.plusSeconds(45)
+        );
+
+        publishAuctionOpened(auctionOpened, traceId);
+
+        long deadline = System.currentTimeMillis() + Duration.ofSeconds(15).toMillis();
+        while (System.currentTimeMillis() < deadline && receivedTraceparents.size() < 3) {
+            Thread.sleep(200);
+        }
+
+        assertThat(receivedTraceparents).hasSize(3);
+        assertThat(receivedTraceparents).allMatch(traceparent -> traceparent.contains(traceId));
+    }
+
+    @Test
     void noBidIsSubmittedWhenNoConfiguredBotIsEligible() throws Exception {
         UUID proposalId = UUID.randomUUID();
         Instant now = Instant.now();
@@ -118,14 +145,22 @@ class AuctionOpenedBidSubmissionIntegrationTest {
     }
 
     private void publishAuctionOpened(AuctionOpenedEvent event) throws Exception {
+        publishAuctionOpened(event, null);
+    }
+
+    private void publishAuctionOpened(AuctionOpenedEvent event, String traceId) throws Exception {
         Properties producerProps = new Properties();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps)) {
-            producer.send(new ProducerRecord<>(
+            ProducerRecord<String, String> record = new ProducerRecord<>(
                 "auction.opened", event.proposalId().toString(), objectMapper.writeValueAsString(event)
-            )).get();
+            );
+            if (traceId != null) {
+                record.headers().add("traceparent", ("00-" + traceId + "-00f067aa0ba902b7-01").getBytes());
+            }
+            producer.send(record).get();
         }
     }
 

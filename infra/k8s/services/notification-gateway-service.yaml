@@ -12,6 +12,10 @@ spec:
     metadata:
       labels:
         app: notification-gateway-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8086"
     spec:
       containers:
         - name: notification-gateway-service
@@ -22,6 +26,8 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Xmx192m -XX:+UseSerialGC"
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://jaeger:4318/v1/traces
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
           readinessProbe:

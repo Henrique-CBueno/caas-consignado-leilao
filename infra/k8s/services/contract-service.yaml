@@ -12,6 +12,10 @@ spec:
     metadata:
       labels:
         app: contract-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8080"
     spec:
       containers:
         - name: contract-service
@@ -22,6 +26,8 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Xmx192m -XX:+UseSerialGC"
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://jaeger:4318/v1/traces
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres-contract-service:5432/caas
             - name: SPRING_DATASOURCE_USERNAME

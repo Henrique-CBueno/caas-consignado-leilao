@@ -1,6 +1,8 @@
 spring:
   application:
     name: funder-bot-service
+  config:
+    import: classpath:observability-defaults.yml
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     consumer:

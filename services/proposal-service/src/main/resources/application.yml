@@ -1,6 +1,8 @@
 spring:
   application:
     name: proposal-service
+  config:
+    import: classpath:observability-defaults.yml
   jpa:
     hibernate:
       ddl-auto: validate

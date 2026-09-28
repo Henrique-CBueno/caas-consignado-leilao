@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -33,6 +34,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureObservability
 @Testcontainers
 class ProposalOutboxKafkaIntegrationTest {
 
@@ -100,5 +102,44 @@ class ProposalOutboxKafkaIntegrationTest {
         assertThat(event.borrowerId()).isEqualTo("12345678900");
         assertThat(event.requestedAmount()).isEqualByComparingTo("5000.00");
         assertThat(event.termMonths()).isEqualTo(24);
+    }
+
+    @Test
+    void publishedEventCarriesTheTraceOfTheRequestThatCreatedTheProposal() {
+        String traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Tenant-Id", UUID.randomUUID().toString());
+        headers.set("traceparent", "00-" + traceId + "-00f067aa0ba902b7-01");
+
+        CreateProposalResponse created = restTemplate.exchange(
+            "http://localhost:" + port + "/proposals",
+            HttpMethod.POST,
+            new HttpEntity<>(new CreateProposalRequest("98765432100", new BigDecimal("3000.00"), 12), headers),
+            CreateProposalResponse.class
+        ).getBody();
+
+        Properties consumerProps = new Properties();
+        consumerProps.putAll(KafkaTestUtils.consumerProps(kafka.getBootstrapServers(), "test-group-" + UUID.randomUUID(), "true"));
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        ConsumerRecord<String, String> published = null;
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
+            consumer.subscribe(java.util.List.of("proposal.created"));
+            long deadline = System.currentTimeMillis() + Duration.ofSeconds(15).toMillis();
+            while (System.currentTimeMillis() < deadline && published == null) {
+                for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(500))) {
+                    if (record.value().contains(created.id().toString())) {
+                        published = record;
+                    }
+                }
+            }
+        }
+
+        assertThat(published).isNotNull();
+        org.apache.kafka.common.header.Header traceparent = published.headers().lastHeader("traceparent");
+        assertThat(traceparent).isNotNull();
+        assertThat(new String(traceparent.value())).contains(traceId);
     }
 }

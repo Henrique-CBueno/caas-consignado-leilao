@@ -1,5 +1,5 @@
-# Sem starter-web: credit-analysis-service não abre porta HTTP, só consome Kafka
-# e faz JPA — por isso sem containerPort/readinessProbe/Service.
+# credit-analysis-service só consome Kafka e faz JPA: o starter-web existe apenas para
+# expor o Actuator (métricas Prometheus, porta 8080) — por isso sem readinessProbe/Service.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,6 +14,10 @@ spec:
     metadata:
       labels:
         app: credit-analysis-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8080"
     spec:
       containers:
         - name: credit-analysis-service
@@ -22,6 +26,8 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Xmx192m -XX:+UseSerialGC"
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://jaeger:4318/v1/traces
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres-credit-analysis-service:5432/caas
             - name: SPRING_DATASOURCE_USERNAME

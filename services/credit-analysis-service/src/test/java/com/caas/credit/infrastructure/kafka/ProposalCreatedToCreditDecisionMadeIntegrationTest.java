@@ -20,6 +20,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -30,6 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
+@AutoConfigureObservability
 @Testcontainers
 class ProposalCreatedToCreditDecisionMadeIntegrationTest {
 
@@ -96,5 +98,51 @@ class ProposalCreatedToCreditDecisionMadeIntegrationTest {
         assertThat(event).isNotNull();
         assertThat(event.tenantId()).isEqualTo(tenantId);
         assertThat(event.decision()).isIn("APPROVE", "REJECT", "MANUAL_REVIEW");
+    }
+
+    @Test
+    void theCreditDecisionMadeEventCarriesTheTraceOfTheProposalCreatedThatCausedIt() throws Exception {
+        String traceId = "0af7651916cd43dd8448eb211c80319c";
+        UUID proposalId = UUID.randomUUID();
+        ProposalCreatedEvent proposalCreated = new ProposalCreatedEvent(
+            proposalId, UUID.randomUUID(), "12345678900", new BigDecimal("5000.00"), 24
+        );
+
+        Properties producerProps = new Properties();
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps)) {
+            ProducerRecord<String, String> record = new ProducerRecord<>(
+                "proposal.created", proposalId.toString(), objectMapper.writeValueAsString(proposalCreated)
+            );
+            record.headers().add("traceparent", ("00-" + traceId + "-b7ad6b7169203331-01").getBytes());
+            producer.send(record).get();
+        }
+
+        Properties consumerProps = new Properties();
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + UUID.randomUUID());
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        ConsumerRecord<String, String> published = null;
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
+            consumer.subscribe(List.of("credit.decision.made"));
+            long deadline = System.currentTimeMillis() + Duration.ofSeconds(20).toMillis();
+            while (System.currentTimeMillis() < deadline && published == null) {
+                for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(500))) {
+                    if (record.value().contains(proposalId.toString())) {
+                        published = record;
+                    }
+                }
+            }
+        }
+
+        assertThat(published).isNotNull();
+        org.apache.kafka.common.header.Header traceparent = published.headers().lastHeader("traceparent");
+        assertThat(traceparent).isNotNull();
+        assertThat(new String(traceparent.value())).contains(traceId);
     }
 }

@@ -11,6 +11,9 @@ public interface AuctionRepository {
 
     Auction findByProposalId(ProposalId id);
 
+    // W3C traceparent do momento em que o leilão foi aberto (null se não havia trace).
+    String traceparentOf(ProposalId id);
+
     List<Auction> findOpenExpired(Instant now);
 
     // Sem transação ambiente (@Transactional) como nos serviços com Postgres: o

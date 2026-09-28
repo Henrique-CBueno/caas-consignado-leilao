@@ -1,6 +1,8 @@
 spring:
   application:
     name: credit-analysis-service
+  config:
+    import: classpath:observability-defaults.yml
   cloud:
     vault:
       # spring-cloud-vault-config fica ativo só por estar no classpath (achado

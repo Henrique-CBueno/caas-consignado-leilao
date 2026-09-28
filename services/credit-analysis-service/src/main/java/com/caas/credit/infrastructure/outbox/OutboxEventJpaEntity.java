@@ -33,4 +33,6 @@ public class OutboxEventJpaEntity {
 
     @Setter
     private Instant publishedAt;
+
+    private String traceparent;
 }

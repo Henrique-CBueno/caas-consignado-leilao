@@ -2,6 +2,7 @@ package com.caas.auction.infrastructure.persistence;
 
 import com.caas.auction.application.AuctionRepository;
 import com.caas.auction.domain.Auction;
+import com.caas.observability.TraceContextStore;
 import com.caas.auction.domain.AuctionStatus;
 import com.caas.auction.domain.Bid;
 import com.caas.auction.domain.ProposalId;
@@ -34,10 +35,12 @@ public class DynamoDbAuctionRepository implements AuctionRepository {
 
     private final DynamoDbClient client;
     private final ObjectMapper objectMapper;
+    private final TraceContextStore traceContextStore;
 
-    public DynamoDbAuctionRepository(DynamoDbClient client, ObjectMapper objectMapper) {
+    public DynamoDbAuctionRepository(DynamoDbClient client, ObjectMapper objectMapper, TraceContextStore traceContextStore) {
         this.client = client;
         this.objectMapper = objectMapper;
+        this.traceContextStore = traceContextStore;
     }
 
     @Override
@@ -59,6 +62,17 @@ public class DynamoDbAuctionRepository implements AuctionRepository {
     }
 
     @Override
+    public String traceparentOf(ProposalId id) {
+        GetItemResponse response = client.getItem(GetItemRequest.builder()
+            .tableName(TABLE_NAME)
+            .key(Map.of("proposal_id", AttributeValue.fromS(id.value().toString())))
+            .build());
+        return response.hasItem() && response.item().containsKey("traceparent")
+            ? response.item().get("traceparent").s()
+            : null;
+    }
+
+    @Override
     public List<Auction> findOpenExpired(Instant now) {
         ScanResponse response = client.scan(ScanRequest.builder()
             .tableName(TABLE_NAME)
@@ -74,7 +88,17 @@ public class DynamoDbAuctionRepository implements AuctionRepository {
 
     @Override
     public void saveAndPublish(Auction auction, UUID aggregateId, String eventType, Object eventPayload) {
-        Put auctionPut = Put.builder().tableName(TABLE_NAME).item(toItem(auction)).build();
+        // O leilão guarda o trace de quando foi aberto: o fechamento (scheduler, sem
+        // requisição) e os lances precisam reescrever o item sem perder esse contexto.
+        String traceparent = traceparentOf(auction.proposalId());
+        if (traceparent == null) {
+            traceparent = traceContextStore.capture();
+        }
+        Map<String, AttributeValue> auctionItem = toItem(auction);
+        if (traceparent != null) {
+            auctionItem.put("traceparent", AttributeValue.fromS(traceparent));
+        }
+        Put auctionPut = Put.builder().tableName(TABLE_NAME).item(auctionItem).build();
 
         Map<String, AttributeValue> outboxItem = new HashMap<>();
         outboxItem.put("id", AttributeValue.fromS(UUID.randomUUID().toString()));
@@ -82,6 +106,10 @@ public class DynamoDbAuctionRepository implements AuctionRepository {
         outboxItem.put("event_type", AttributeValue.fromS(eventType));
         outboxItem.put("payload", AttributeValue.fromS(writeJson(eventPayload)));
         outboxItem.put("published", AttributeValue.fromBool(false));
+        String eventTraceparent = traceContextStore.capture();
+        if (eventTraceparent != null) {
+            outboxItem.put("traceparent", AttributeValue.fromS(eventTraceparent));
+        }
         Put outboxPut = Put.builder().tableName(OUTBOX_TABLE_NAME).item(outboxItem).build();
 
         // Atomicidade equivalente ao @Transactional dos serviços com Postgres (ADR-0003):

@@ -15,7 +15,9 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, ReactiveJwtDecoder jwtDecoder) {
         return http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .authorizeExchange(exchanges -> exchanges.anyExchange().authenticated())
+            .authorizeExchange(exchanges -> exchanges
+                .pathMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+                .anyExchange().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtDecoder(jwtDecoder)))
             .build();
     }

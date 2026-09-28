@@ -1,6 +1,7 @@
 package com.caas.contract.infrastructure.outbox;
 
 import com.caas.contract.application.OutboxEventPublisher;
+import com.caas.observability.TraceContextStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -13,7 +14,14 @@ public class JpaOutboxEventPublisher implements OutboxEventPublisher {
     private final SpringDataOutboxEventRepository springDataRepository;
     private final ObjectMapper objectMapper;
 
-    public JpaOutboxEventPublisher(SpringDataOutboxEventRepository springDataRepository, ObjectMapper objectMapper) {
+    private final TraceContextStore traceContextStore;
+
+    public JpaOutboxEventPublisher(
+        SpringDataOutboxEventRepository springDataRepository,
+        ObjectMapper objectMapper,
+        TraceContextStore traceContextStore
+    ) {
+        this.traceContextStore = traceContextStore;
         this.springDataRepository = springDataRepository;
         this.objectMapper = objectMapper;
     }
@@ -28,7 +36,8 @@ public class JpaOutboxEventPublisher implements OutboxEventPublisher {
                 eventType,
                 objectMapper.writeValueAsString(payload),
                 Instant.now(),
-                null
+                null,
+                traceContextStore.capture()
             ));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Falha ao serializar payload do evento " + eventType, e);

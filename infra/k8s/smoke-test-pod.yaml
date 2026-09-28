@@ -9,6 +9,9 @@ spec:
     - name: smoke-test
       image: curlimages/curl:latest
       command: ["sh", "/scripts/smoke-test.sh"]
+      env:
+        - name: CHECK_OBSERVABILITY
+          value: "CHECK_OBSERVABILITY_VALUE"
       volumeMounts:
         - name: script
           mountPath: /scripts

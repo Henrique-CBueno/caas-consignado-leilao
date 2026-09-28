@@ -12,6 +12,7 @@ java {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation(project(":libs:observability"))
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")

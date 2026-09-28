@@ -5,6 +5,7 @@ import com.caas.auction.domain.AuctionStatus;
 import com.caas.auction.domain.Bid;
 import com.caas.auction.domain.WinnerSelector;
 import com.caas.events.AuctionClosedEvent;
+import com.caas.observability.TraceContextStore;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,10 +15,12 @@ import org.springframework.stereotype.Component;
 public class AuctionCloser {
 
     private final AuctionRepository auctionRepository;
+    private final TraceContextStore traceContextStore;
     private final WinnerSelector winnerSelector = new WinnerSelector();
 
-    public AuctionCloser(AuctionRepository auctionRepository) {
+    public AuctionCloser(AuctionRepository auctionRepository, TraceContextStore traceContextStore) {
         this.auctionRepository = auctionRepository;
+        this.traceContextStore = traceContextStore;
     }
 
     @Scheduled(fixedDelayString = "${app.auction.closer-fixed-delay-ms}")
@@ -45,7 +48,11 @@ public class AuctionCloser {
                 winner.map(Bid::termMonths).orElse(null)
             );
 
-            auctionRepository.saveAndPublish(closed, closed.proposalId().value(), "AuctionClosed", event);
+            traceContextStore.inSpan(
+                auctionRepository.traceparentOf(auction.proposalId()),
+                "close-auction",
+                () -> auctionRepository.saveAndPublish(closed, closed.proposalId().value(), "AuctionClosed", event)
+            );
         }
     }
 }

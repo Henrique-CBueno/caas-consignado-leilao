@@ -12,8 +12,9 @@ java {
 
 dependencies {
     implementation(project(":libs:event-schemas"))
+    implementation(project(":libs:observability"))
 
-    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-json")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")

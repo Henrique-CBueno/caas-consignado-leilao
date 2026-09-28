@@ -16,6 +16,9 @@ jobs:
     # secrets (ambiente "secrets"), não Repository secrets — sem declarar
     # o ambiente aqui, o job não os enxerga (achado empírico na Milestone 10).
     environment: secrets
+    env:
+      # O setup-minikube cria o perfil padrão; o Makefile usa o perfil "caas" localmente (ADR-0011).
+      MINIKUBE_PROFILE: minikube
     steps:
       - uses: actions/checkout@v4
 

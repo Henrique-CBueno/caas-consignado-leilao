@@ -1,5 +1,6 @@
 package com.caas.auction.infrastructure.outbox;
 
+import com.caas.observability.TraceContextStore;
 import java.util.Map;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,10 +21,12 @@ public class OutboxRelay {
 
     private final DynamoDbClient client;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final TraceContextStore traceContextStore;
 
-    public OutboxRelay(DynamoDbClient client, KafkaTemplate<String, String> kafkaTemplate) {
+    public OutboxRelay(DynamoDbClient client, KafkaTemplate<String, String> kafkaTemplate, TraceContextStore traceContextStore) {
         this.client = client;
         this.kafkaTemplate = kafkaTemplate;
+        this.traceContextStore = traceContextStore;
     }
 
     @Scheduled(fixedDelayString = "${app.outbox.relay-fixed-delay-ms}")
@@ -40,11 +43,15 @@ public class OutboxRelay {
             String aggregateId = item.get("aggregate_id").s();
             String payload = item.get("payload").s();
 
-            try {
-                kafkaTemplate.send(topicFor(eventType), aggregateId, payload).get();
-            } catch (Exception e) {
-                throw new IllegalStateException("Falha ao publicar evento de outbox " + id, e);
-            }
+            String traceparent = item.containsKey("traceparent") ? item.get("traceparent").s() : null;
+
+            traceContextStore.inSpan(traceparent, "outbox-relay " + eventType, () -> {
+                try {
+                    kafkaTemplate.send(topicFor(eventType), aggregateId, payload).get();
+                } catch (Exception e) {
+                    throw new IllegalStateException("Falha ao publicar evento de outbox " + id, e);
+                }
+            });
 
             client.updateItem(UpdateItemRequest.builder()
                 .tableName(OUTBOX_TABLE_NAME)

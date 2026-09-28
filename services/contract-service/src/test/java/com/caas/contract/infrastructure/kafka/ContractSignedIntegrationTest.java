@@ -22,6 +22,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -32,6 +33,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
+@AutoConfigureObservability
 @Testcontainers
 class ContractSignedIntegrationTest {
 
@@ -83,6 +85,39 @@ class ContractSignedIntegrationTest {
         assertThat(contractSigned.rate()).isEqualByComparingTo("2.08");
         assertThat(contractSigned.termMonths()).isEqualTo(18);
         assertThat(contractSigned.amount()).isEqualByComparingTo("5000.00");
+    }
+
+    @Test
+    void theContractSignedEventCarriesTheTraceOfTheEventsThatCausedIt() throws Exception {
+        String traceId = "5b8aa5a2d2c872e8321cf37308d69df2";
+        UUID proposalId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        CreditDecisionMadeEvent postAuctionApproved = new CreditDecisionMadeEvent(
+            proposalId, tenantId, "APPROVE", 0.9, "POST_AUCTION", new BigDecimal("5000.00")
+        );
+        AuctionClosedEvent auctionClosed = new AuctionClosedEvent(
+            proposalId, tenantId, "CLOSED_WITH_WINNER", "funder-2", new BigDecimal("2.08"), 18
+        );
+
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps())) {
+            ProducerRecord<String, String> closed = new ProducerRecord<>(
+                "auction.closed", proposalId.toString(), objectMapper.writeValueAsString(auctionClosed)
+            );
+            closed.headers().add("traceparent", ("00-" + traceId + "-1111111111111111-01").getBytes());
+            ProducerRecord<String, String> decision = new ProducerRecord<>(
+                "credit.decision.made", proposalId.toString(), objectMapper.writeValueAsString(postAuctionApproved)
+            );
+            decision.headers().add("traceparent", ("00-" + traceId + "-2222222222222222-01").getBytes());
+            producer.send(closed).get();
+            producer.send(decision).get();
+        }
+
+        ConsumerRecord<String, String> published = pollForContractSignedRecord(proposalId, Duration.ofSeconds(20));
+
+        assertThat(published).isNotNull();
+        org.apache.kafka.common.header.Header traceparent = published.headers().lastHeader("traceparent");
+        assertThat(traceparent).isNotNull();
+        assertThat(new String(traceparent.value())).contains(traceId);
     }
 
     @Test
@@ -138,6 +173,11 @@ class ContractSignedIntegrationTest {
     }
 
     private ContractSignedEvent pollForContractSigned(UUID proposalId, Duration timeout) throws Exception {
+        ConsumerRecord<String, String> record = pollForContractSignedRecord(proposalId, timeout);
+        return record == null ? null : objectMapper.readValue(record.value(), ContractSignedEvent.class);
+    }
+
+    private ConsumerRecord<String, String> pollForContractSignedRecord(UUID proposalId, Duration timeout) throws Exception {
         Properties consumerProps = new Properties();
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + UUID.randomUUID());
@@ -154,7 +194,7 @@ class ContractSignedIntegrationTest {
                 for (ConsumerRecord<String, String> record : records) {
                     ContractSignedEvent candidate = objectMapper.readValue(record.value(), ContractSignedEvent.class);
                     if (candidate.proposalId().equals(proposalId)) {
-                        return candidate;
+                        return record;
                     }
                 }
             }

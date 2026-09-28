@@ -30,6 +30,11 @@ class InMemoryAuctionRepository implements AuctionRepository {
     }
 
     @Override
+    public String traceparentOf(ProposalId id) {
+        return null;
+    }
+
+    @Override
     public List<Auction> findOpenExpired(Instant now) {
         return auctions.values().stream()
             .filter(a -> a.status() == AuctionStatus.OPEN && now.isAfter(a.expiresAt()))

@@ -1,6 +1,10 @@
 spring:
   application:
     name: api-gateway
+  config:
+    import: classpath:observability-defaults.yml
+  reactor:
+    context-propagation: auto
 
 app:
   cognito:

@@ -12,6 +12,10 @@ spec:
     metadata:
       labels:
         app: funder-bot-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8080"
     spec:
       containers:
         - name: funder-bot-service
@@ -20,6 +24,8 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Xmx192m -XX:+UseSerialGC"
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://jaeger:4318/v1/traces
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
             - name: AUCTION_SERVICE_BASE_URL

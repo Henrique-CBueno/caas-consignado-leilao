@@ -12,6 +12,7 @@ java {
 
 dependencies {
     implementation(project(":libs:event-schemas"))
+    implementation(project(":libs:observability"))
 
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.boot:spring-boot-starter-json")

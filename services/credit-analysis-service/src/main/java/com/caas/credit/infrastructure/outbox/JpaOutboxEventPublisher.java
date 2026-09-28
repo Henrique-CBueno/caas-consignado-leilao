@@ -1,6 +1,7 @@
 package com.caas.credit.infrastructure.outbox;
 
 import com.caas.credit.application.OutboxEventPublisher;
+import com.caas.observability.TraceContextStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -12,10 +13,16 @@ public class JpaOutboxEventPublisher implements OutboxEventPublisher {
 
     private final SpringDataOutboxEventRepository springDataRepository;
     private final ObjectMapper objectMapper;
+    private final TraceContextStore traceContextStore;
 
-    public JpaOutboxEventPublisher(SpringDataOutboxEventRepository springDataRepository, ObjectMapper objectMapper) {
+    public JpaOutboxEventPublisher(
+        SpringDataOutboxEventRepository springDataRepository,
+        ObjectMapper objectMapper,
+        TraceContextStore traceContextStore
+    ) {
         this.springDataRepository = springDataRepository;
         this.objectMapper = objectMapper;
+        this.traceContextStore = traceContextStore;
     }
 
     @Override
@@ -28,7 +35,8 @@ public class JpaOutboxEventPublisher implements OutboxEventPublisher {
                 eventType,
                 objectMapper.writeValueAsString(payload),
                 Instant.now(),
-                null
+                null,
+                traceContextStore.capture()
             ));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Falha ao serializar payload do evento " + eventType, e);

@@ -26,4 +26,11 @@ class GatewayJwtValidationIntegrationTest {
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
     }
+
+    @Test
+    void actuatorHealthIsReachableWithoutATokenSoPrometheusCanScrapeTheGateway() {
+        webTestClient.get().uri("/actuator/health")
+            .exchange()
+            .expectStatus().isOk();
+    }
 }

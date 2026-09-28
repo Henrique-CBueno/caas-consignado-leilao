@@ -3,6 +3,7 @@ package com.caas.funderbot.infrastructure.kafka;
 import com.caas.events.AuctionOpenedEvent;
 import com.caas.funderbot.infrastructure.client.BidSubmitter;
 import com.caas.funderbot.infrastructure.config.FunderBotProperties;
+import com.caas.observability.TraceContextStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,10 +24,17 @@ public class AuctionOpenedListener {
     private final FunderBotProperties properties;
     private final BidSubmitter bidSubmitter;
     private final ObjectMapper objectMapper;
+    private final TraceContextStore traceContextStore;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final Random random = new Random();
 
-    public AuctionOpenedListener(FunderBotProperties properties, BidSubmitter bidSubmitter, ObjectMapper objectMapper) {
+    public AuctionOpenedListener(
+        FunderBotProperties properties,
+        BidSubmitter bidSubmitter,
+        ObjectMapper objectMapper,
+        TraceContextStore traceContextStore
+    ) {
+        this.traceContextStore = traceContextStore;
         this.properties = properties;
         this.bidSubmitter = bidSubmitter;
         this.objectMapper = objectMapper;
@@ -35,6 +43,8 @@ public class AuctionOpenedListener {
     @KafkaListener(topics = "auction.opened")
     public void onAuctionOpened(String payload) throws Exception {
         AuctionOpenedEvent event = objectMapper.readValue(payload, AuctionOpenedEvent.class);
+        // O lance roda em outra thread (delay aleatório): o contexto do listener precisa ser levado junto.
+        String traceparent = traceContextStore.capture();
 
         for (FunderBotProperties.Bot bot : properties.bots()) {
             if (!event.eligibleFunderIds().contains(bot.id())) {
@@ -45,7 +55,10 @@ public class AuctionOpenedListener {
             BigDecimal rate = jitteredRate(bot.baseRate());
 
             scheduler.schedule(
-                () -> bidSubmitter.submitBid(event.proposalId(), bot.id(), rate, bot.termMonths()),
+                () -> traceContextStore.inSpan(
+                    traceparent, "submit-bid " + bot.id(),
+                    () -> bidSubmitter.submitBid(event.proposalId(), bot.id(), rate, bot.termMonths())
+                ),
                 delayMs, TimeUnit.MILLISECONDS
             );
         }
