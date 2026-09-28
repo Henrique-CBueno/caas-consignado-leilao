@@ -2,7 +2,7 @@ COMPOSE = docker compose -f infra/docker/docker-compose.dev.yml
 K8S_NS = caas
 K8S_DIR = infra/k8s
 
-.PHONY: up down ps logs deploy-local smoke-test k8s-down
+.PHONY: up down ps logs test deploy-local smoke-test k8s-down
 
 up:
 	$(COMPOSE) up -d
@@ -37,6 +37,9 @@ FULL_POSTGRES = tenant-service proposal-service credit-analysis-service contract
 SLIM_POSTGRES = proposal-service credit-analysis-service contract-service disbursement-service
 SERVICES = $(if $(SLIM),$(SLIM_SERVICES),$(FULL_SERVICES))
 POSTGRES = $(if $(SLIM),$(SLIM_POSTGRES),$(FULL_POSTGRES))
+
+test:
+	./gradlew test integrationTest contractTest --continue
 
 deploy-local:
 	minikube status -f '{{.Host}}' | grep -q Running || minikube start --driver=docker

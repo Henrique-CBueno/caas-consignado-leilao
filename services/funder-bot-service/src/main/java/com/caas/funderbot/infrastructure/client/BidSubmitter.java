@@ -51,7 +51,14 @@ public class BidSubmitter {
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build();
-        httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+        int status = httpClient.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+        if (status >= 500) {
+            throw new IllegalStateException("auction-service respondeu HTTP " + status);
+        }
+        if (status >= 400) {
+            // 4xx é rejeição de negócio (ex.: leilão fechado) — não deve abrir o circuito dos demais bots.
+            log.warn("Lance de {} rejeitado pelo leilão {}: HTTP {}", funderId, proposalId, status);
+        }
         return null;
     }
 }

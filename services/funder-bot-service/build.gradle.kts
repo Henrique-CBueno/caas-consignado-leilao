@@ -23,8 +23,13 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:kafka")
+    testImplementation("au.com.dius.pact.consumer:junit5:4.7.5")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.named<Test>("contractTest") {
+    systemProperty("pact.rootDir", layout.buildDirectory.dir("pacts").get().asFile.path)
 }

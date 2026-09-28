@@ -30,8 +30,14 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:kafka")
     testImplementation("org.testcontainers:localstack")
+    testImplementation("au.com.dius.pact.provider:spring6:4.7.5")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// O pact é gerado pelo consumidor (funder-bot-service); nunca verificar um contrato desatualizado.
+tasks.named<Test>("contractTest") {
+    dependsOn(":services:funder-bot-service:contractTest")
 }

@@ -20,7 +20,12 @@ jobs:
         run: docker compose -f infra/docker/docker-compose.dev.yml config
       # Testes de integração usam Testcontainers (Postgres, cognito-local) — runners
       # ubuntu-latest do GitHub já vêm com Docker.
-      - run: ./gradlew test --no-daemon
+      - name: Testes unitários
+        run: ./gradlew test --no-daemon
+      - name: Testes de integração
+        run: ./gradlew integrationTest --no-daemon
+      - name: Testes de contrato
+        run: ./gradlew contractTest --no-daemon
 
   # Lint dedicado (ktlint) fica pendente — bug conhecido do plugin nesta combinação
   # de versões (ver build.gradle.kts raiz). Build de imagem/deploy entram no

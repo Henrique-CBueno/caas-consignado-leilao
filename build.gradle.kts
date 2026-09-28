@@ -13,3 +13,41 @@ allprojects {
         mavenCentral()
     }
 }
+
+// Níveis de teste (ADR-0010), separados por nome de classe: `test` = unitário,
+// `integrationTest` = *IntegrationTest (Testcontainers), `contractTest` = *ContractTest (Pact).
+subprojects {
+    plugins.withId("java") {
+        val sourceSets = extensions.getByType<SourceSetContainer>()
+        val unit = tasks.named<Test>("test") {
+            filter {
+                excludeTestsMatching("*IntegrationTest")
+                excludeTestsMatching("*ContractTest")
+                isFailOnNoMatchingTests = false
+            }
+        }
+        val integration = tasks.register<Test>("integrationTest") {
+            group = "verification"
+            testClassesDirs = sourceSets["test"].output.classesDirs
+            classpath = sourceSets["test"].runtimeClasspath
+            useJUnitPlatform()
+            filter {
+                includeTestsMatching("*IntegrationTest")
+                isFailOnNoMatchingTests = false
+            }
+            shouldRunAfter(unit)
+        }
+        val contract = tasks.register<Test>("contractTest") {
+            group = "verification"
+            testClassesDirs = sourceSets["test"].output.classesDirs
+            classpath = sourceSets["test"].runtimeClasspath
+            useJUnitPlatform()
+            filter {
+                includeTestsMatching("*ContractTest")
+                isFailOnNoMatchingTests = false
+            }
+            shouldRunAfter(integration)
+        }
+        tasks.named("check") { dependsOn(integration, contract) }
+    }
+}
