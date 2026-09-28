@@ -1,33 +1,32 @@
-import { Component, OnDestroy, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Client, IMessage } from '@stomp/stompjs';
+import { AUCTION_FEED, Bid, ConnectionState } from './auction-feed';
 
-interface AuctionNotification {
-  type: 'BID_PLACED' | 'AUCTION_CLOSED';
-  payload: unknown;
+const CONNECTION_LABELS: Record<ConnectionState, string> = {
+  idle: 'desconectado',
+  connecting: 'conectando',
+  connected: 'conectado',
+  reconnecting: 'reconectando',
+};
+
+const RATE_FORMAT = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Espelha o WinnerSelector do auction-service (ADR-0018): menor taxa, depois menor prazo, depois lance mais antigo.
+// O backend corta zeros à direita da fração de segundos; padronizar em 9 dígitos torna a comparação de texto correta.
+function instantKey(iso: string): string {
+  const [seconds, fraction = ''] = iso.replace(/Z$/, '').split('.');
+  return `${seconds}.${fraction.padEnd(9, '0')}`;
 }
 
-interface BidPlacedPayload {
-  funderId: string;
-  rate: number;
-  termMonths: number;
-  receivedAt: string;
+function byAuctionRank(a: Bid, b: Bid): number {
+  return (
+    a.rate - b.rate ||
+    a.termMonths - b.termMonths ||
+    instantKey(a.receivedAt).localeCompare(instantKey(b.receivedAt))
+  );
 }
 
-interface AuctionClosedPayload {
-  status: string;
-  winningFunderId: string | null;
-  winningRate: number | null;
-}
-
-// Dev local (ng serve): notification-gateway-service roda direto na porta 8086.
-// Fora de localhost (acessado via NodePort do minikube, Milestone 9): a porta do
-// serviço é a NodePort fixa definida no manifest do notification-gateway-service.
-const LOCAL_DEV_PORT = 8086;
-const CLUSTER_NODE_PORT = 30086;
-const NOTIFICATION_GATEWAY_WS_PORT =
-  window.location.hostname === 'localhost' ? LOCAL_DEV_PORT : CLUSTER_NODE_PORT;
-const NOTIFICATION_GATEWAY_WS_URL = `ws://${window.location.hostname}:${NOTIFICATION_GATEWAY_WS_PORT}/ws`;
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Component({
   imports: [FormsModule],
@@ -36,48 +35,37 @@ const NOTIFICATION_GATEWAY_WS_URL = `ws://${window.location.hostname}:${NOTIFICA
   templateUrl: './app.html',
 })
 export class App implements OnDestroy {
-  protected proposalId = '';
-  protected readonly connected = signal(false);
-  protected readonly bids = signal<BidPlacedPayload[]>([]);
-  protected readonly closedAuction = signal<AuctionClosedPayload | null>(null);
+  private readonly feed = inject(AUCTION_FEED);
 
-  private client: Client | null = null;
+  protected proposalId = '';
+  protected readonly proposalIdError = signal<string | null>(null);
+  protected readonly connection = this.feed.connection;
+  protected readonly connectionLabel = computed(() => CONNECTION_LABELS[this.connection()]);
+  protected readonly ranking = computed(() => [...this.feed.bids()].sort(byAuctionRank));
+  protected readonly leaderAnnouncement = computed(() => {
+    const leader = this.ranking()[0];
+    return leader ? `Melhor lance: ${leader.funderId} a ${this.formatRate(leader.rate)}` : '';
+  });
+  protected readonly closedAuction = this.feed.closed;
+
+  protected formatRate(rate: number): string {
+    return `${RATE_FORMAT.format(rate)}%`;
+  }
 
   protected watch(): void {
     if (!this.proposalId) {
+      this.proposalIdError.set('Informe o ID da proposta para acompanhar o leilão.');
       return;
     }
-    this.disconnect();
-    this.bids.set([]);
-    this.closedAuction.set(null);
-
-    const client = new Client({
-      brokerURL: NOTIFICATION_GATEWAY_WS_URL,
-      onConnect: () => {
-        this.connected.set(true);
-        client.subscribe(`/topic/auctions/${this.proposalId}`, (message: IMessage) => {
-          const notification: AuctionNotification = JSON.parse(message.body);
-          if (notification.type === 'BID_PLACED') {
-            this.bids.update((current) => [...current, notification.payload as BidPlacedPayload]);
-          } else if (notification.type === 'AUCTION_CLOSED') {
-            this.closedAuction.set(notification.payload as AuctionClosedPayload);
-          }
-        });
-      },
-      onWebSocketClose: () => this.connected.set(false),
-    });
-
-    client.activate();
-    this.client = client;
-  }
-
-  protected disconnect(): void {
-    this.client?.deactivate();
-    this.client = null;
-    this.connected.set(false);
+    if (!UUID_FORMAT.test(this.proposalId)) {
+      this.proposalIdError.set('Informe o ID da proposta no formato UUID.');
+      return;
+    }
+    this.proposalIdError.set(null);
+    this.feed.watch(this.proposalId);
   }
 
   ngOnDestroy(): void {
-    this.disconnect();
+    this.feed.stop();
   }
 }

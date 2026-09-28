@@ -9,25 +9,37 @@
       name="proposalId"
     />
     <button type="button" (click)="watch()">Acompanhar</button>
-    <span class="status" [class.status--connected]="connected()">
-      {{ connected() ? 'conectado' : 'desconectado' }}
+    <span class="status" role="status" [class.status--connected]="connection() === 'connected'">
+      {{ connectionLabel() }}
     </span>
   </div>
 
-  @if (closedAuction(); as closed) {
-    <div class="closed-banner">
-      Leilão fechado: {{ closed.status }}
-      @if (closed.winningFunderId) {
-        — vencedor {{ closed.winningFunderId }} a {{ closed.winningRate }}%
-      }
-    </div>
+  @if (proposalIdError(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
   }
 
-  <ul class="bids">
-    @for (bid of bids(); track bid.receivedAt + bid.funderId) {
-      <li>{{ bid.funderId }} — {{ bid.rate }}% / {{ bid.termMonths }}x — {{ bid.receivedAt }}</li>
+  @if (closedAuction(); as closed) {
+    <section class="closed-banner" role="region" aria-label="Resultado do leilão">
+      @if (closed.winningFunderId) {
+        Leilão fechado — vencedor {{ closed.winningFunderId }} a {{ formatRate(closed.winningRate ?? 0) }}
+      } @else {
+        Leilão fechado sem vencedor
+      }
+    </section>
+  }
+
+  <p class="visually-hidden" aria-live="polite">{{ leaderAnnouncement() }}</p>
+
+  <ol class="bids">
+    @for (bid of ranking(); track bid.receivedAt + bid.funderId; let first = $first) {
+      <li>
+        @if (first) {
+          <strong>Melhor lance</strong>
+        }
+        {{ bid.funderId }} — {{ formatRate(bid.rate) }} / {{ bid.termMonths }} meses — {{ bid.receivedAt }}
+      </li>
     } @empty {
       <li class="empty">Nenhum lance ainda.</li>
     }
-  </ul>
+  </ol>
 </main>
