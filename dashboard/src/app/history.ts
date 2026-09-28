@@ -15,8 +15,11 @@ const RATE_FORMAT = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, m
       } @else {
         <button type="button" (click)="history.clear()">Limpar histórico</button>
         <ul>
-          @for (entry of history.entries(); track entry.proposalId) {
+          @for (entry of history.entries(); track entry.proposalId; let isLatest = $first) {
             <li>
+              @if (isLatest) {
+                <strong>Último acompanhado</strong>
+              }
               <a routerLink="/" [queryParams]="{ proposta: entry.proposalId }">{{ entry.proposalId }}</a>
               @if (entry.outcome; as outcome) {
                 @if (outcome.winningFunderId) {

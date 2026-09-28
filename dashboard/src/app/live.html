@@ -11,6 +11,22 @@
     <button type="button" (click)="watch()">Acompanhar</button>
   </div>
 
+  @if (feed.watching() === null) {
+    @if (history.entries().length > 0) {
+      <section aria-label="Últimos leilões">
+        <h2>Últimos leilões</h2>
+        <ul>
+          @for (entry of history.entries().slice(0, 5); track entry.proposalId) {
+            <li><a routerLink="/" [queryParams]="{ proposta: entry.proposalId }">{{ entry.proposalId }}</a></li>
+          }
+        </ul>
+      </section>
+    }
+    @if (!feed.demo) {
+      <button type="button" (click)="showDemo()">Ver com dados simulados</button>
+    }
+  }
+
   @if (proposalIdError(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
@@ -28,12 +44,16 @@
   <p class="visually-hidden" aria-live="polite">{{ leaderAnnouncement() }}</p>
 
   <ol class="bids">
-    @for (bid of ranking(); track bid.receivedAt + bid.funderId; let first = $first) {
+    @for (strip of strips(); track strip.bid.receivedAt + strip.bid.funderId; let first = $first) {
       <li>
-        @if (first) {
+        @if (strip.state === 'leader') {
           <strong>Melhor lance</strong>
+        } @else if (strip.state === 'passed') {
+          <strong>Ultrapassada</strong>
+        } @else {
+          <strong>Em disputa</strong>
         }
-        {{ bid.funderId }} — {{ formatRate(bid.rate) }} / {{ bid.termMonths }} meses — {{ bid.receivedAt }}
+        {{ strip.bid.funderId }} — {{ formatRate(strip.bid.rate) }} / {{ strip.bid.termMonths }} meses — {{ strip.bid.receivedAt }}
       </li>
     } @empty {
       <li class="empty">Nenhum lance ainda.</li>

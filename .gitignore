@@ -33,3 +33,8 @@ crash.log
 
 # OS
 .DS_Store
+
+# Estado transitório da skill impeccable (páginas de decisão e sessões live)
+.impeccable/questions/
+.impeccable/live/sessions/
+.impeccable/mocks/

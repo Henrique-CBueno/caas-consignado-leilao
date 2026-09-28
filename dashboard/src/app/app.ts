@@ -23,6 +23,10 @@ export class App implements OnDestroy {
   private readonly history = inject(HistoryStore);
   protected readonly themeService = inject(ThemeService);
 
+  // Portas fixas dos NodePorts do cluster (ADR-0024); no modo demonstração não há cluster.
+  protected readonly trace = `http://${window.location.hostname}:30686`;
+  protected readonly metrics = `http://${window.location.hostname}:30300`;
+
   protected readonly connection = this.feed.connection;
   protected readonly connectionLabel = computed(() => CONNECTION_LABELS[this.connection()]);
 

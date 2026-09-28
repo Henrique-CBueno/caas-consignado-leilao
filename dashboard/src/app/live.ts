@@ -1,7 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AUCTION_FEED, Bid } from './auction-feed';
+import { NAVIGATE } from './browser';
 import { HistoryStore } from './history-store';
 
 const RATE_FORMAT = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -24,19 +26,38 @@ function byAuctionRank(a: Bid, b: Bid): number {
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   selector: 'app-live',
   styleUrl: './live.css',
   templateUrl: './live.html',
 })
 export class LiveView {
-  private readonly feed = inject(AUCTION_FEED);
-  private readonly history = inject(HistoryStore);
+  protected readonly feed = inject(AUCTION_FEED);
+  protected readonly history = inject(HistoryStore);
+  private readonly navigate = inject(NAVIGATE);
 
   protected proposalId = '';
   private readonly route = inject(ActivatedRoute);
   protected readonly proposalIdError = signal<string | null>(null);
   protected readonly ranking = computed(() => [...this.feed.bids()].sort(byAuctionRank));
+  // Estado de cada tira: a primeira é a líder; quem já liderou e foi superado é "ultrapassada".
+  protected readonly strips = computed(() => {
+    const chronological = [...this.feed.bids()].sort((a, b) =>
+      instantKey(a.receivedAt).localeCompare(instantKey(b.receivedAt)),
+    );
+    const everLed = new Set<Bid>();
+    let best: Bid | null = null;
+    for (const bid of chronological) {
+      if (best === null || byAuctionRank(bid, best) < 0) {
+        best = bid;
+        everLed.add(bid);
+      }
+    }
+    return this.ranking().map((bid, index) => ({
+      bid,
+      state: index === 0 ? ('leader' as const) : everLed.has(bid) ? ('passed' as const) : ('contending' as const),
+    }));
+  });
   protected readonly leaderAnnouncement = computed(() => {
     const leader = this.ranking()[0];
     return leader ? `Melhor lance: ${leader.funderId} a ${this.formatRate(leader.rate)}` : '';
@@ -44,12 +65,18 @@ export class LiveView {
   protected readonly closedAuction = this.feed.closed;
 
   constructor() {
-    // Link do histórico (ou compartilhado): #/?proposta=<id> já começa acompanhando.
-    const shared = this.route.snapshot.queryParamMap.get('proposta');
-    if (shared) {
-      this.proposalId = shared;
-      this.watch();
-    }
+    // Link do histórico, atalho ou endereço compartilhado (#/?proposta=<id>): começa acompanhando.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const shared = params.get('proposta');
+      if (shared) {
+        this.proposalId = shared;
+        this.watch();
+      }
+    });
+  }
+
+  protected showDemo(): void {
+    this.navigate(`${window.location.pathname}?demo#/`);
   }
 
   protected formatRate(rate: number): string {

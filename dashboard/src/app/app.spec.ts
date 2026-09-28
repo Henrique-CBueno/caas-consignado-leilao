@@ -4,6 +4,7 @@ import { Router, provideRouter, withHashLocation } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 import { AUCTION_FEED, AuctionClosed, AuctionFeed, Bid, ConnectionState } from './auction-feed';
+import { NAVIGATE } from './browser';
 import { DemoAuctionFeed } from './demo-auction-feed';
 
 class FakeFeed implements AuctionFeed {
@@ -27,11 +28,12 @@ function bid(funderId: string, rate: number, termMonths: number, receivedAt: str
 
 const A_PROPOSAL_ID = '2ac7ad63-7381-418c-942a-3aebf59290e3';
 
-async function render(feed: AuctionFeed) {
+async function render(feed: AuctionFeed, navigate: (url: string) => void = () => {}) {
   TestBed.configureTestingModule({
     imports: [App],
     providers: [
       { provide: AUCTION_FEED, useValue: feed },
+      { provide: NAVIGATE, useValue: navigate },
       provideRouter(routes, withHashLocation()),
     ],
   });
@@ -396,5 +398,103 @@ describe('Leilão ao vivo', () => {
       );
       expect(screen.page.querySelector('[role="status"]')?.textContent?.trim()).toBe('conectado');
     });
+  });
+
+  describe('atalhos e saídas do estado inicial', () => {
+    it('mostra atalhos dos últimos leilões quando nada está sendo acompanhado', async () => {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+
+      feed.watching.set(null);
+      await screen.settle();
+
+      const shortcuts = screen.page.querySelector('[aria-label="Últimos leilões"]');
+      expect(shortcuts?.textContent).toContain(A_PROPOSAL_ID);
+
+      await screen.clickLink(A_PROPOSAL_ID);
+      expect(feed.watched).toEqual([A_PROPOSAL_ID, A_PROPOSAL_ID]);
+    });
+
+    it('oferece "Ver com dados simulados" e leva ao modo demonstração', async () => {
+      const navigated: string[] = [];
+      const screen = await render(new FakeFeed(), (url) => navigated.push(url));
+
+      await screen.clickButton('Ver com dados simulados');
+
+      expect(navigated).toHaveLength(1);
+      expect(navigated[0]).toContain('?demo');
+    });
+
+    it('não oferece "Ver com dados simulados" quando já está no modo demonstração', async () => {
+      const screen = await render(new DemoAuctionFeed(5));
+
+      const labels = Array.from(screen.page.querySelectorAll('button')).map((b) => b.textContent);
+      expect(labels.join(' ')).not.toContain('Ver com dados simulados');
+    });
+  });
+
+  describe('atalhos de observabilidade', () => {
+    it('leva ao Trace e às Métricas do mesmo host', async () => {
+      const screen = await render(new FakeFeed());
+
+      const hrefs = (text: string) =>
+        Array.from(screen.page.querySelectorAll('a'))
+          .filter((a) => a.textContent?.includes(text))
+          .map((a) => a.getAttribute('href'));
+      expect(hrefs('Trace')).toEqual([`http://${window.location.hostname}:30686`]);
+      expect(hrefs('Métricas')).toEqual([`http://${window.location.hostname}:30300`]);
+    });
+
+    it('esconde os atalhos no modo demonstração, onde não há cluster', async () => {
+      const screen = await render(new DemoAuctionFeed(5));
+
+      const links = Array.from(screen.page.querySelectorAll('a')).map((a) => a.textContent);
+      expect(links.join(' ')).not.toContain('Trace');
+      expect(links.join(' ')).not.toContain('Métricas');
+    });
+  });
+
+  describe('estado de cada tira', () => {
+    const rowOf = (page: HTMLElement, funder: string) =>
+      Array.from(page.querySelectorAll('ol li')).find((li) => li.textContent?.includes(funder));
+
+    it('marca como ultrapassada a tira que já liderou e perdeu a liderança', async () => {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+
+      feed.bids.set([
+        bid('funder-a', 2.5, 24, '2026-09-28T12:49:22.000000000Z'),
+        bid('funder-b', 1.9, 18, '2026-09-28T12:49:24.000000000Z'),
+      ]);
+      await screen.settle();
+
+      expect(rowOf(screen.page, 'funder-a')?.textContent).toContain('Ultrapassada');
+      expect(rowOf(screen.page, 'funder-b')?.textContent).not.toContain('Ultrapassada');
+    });
+
+    it('chama de "Em disputa" a tira que nunca liderou', async () => {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+
+      feed.bids.set([
+        bid('funder-b', 1.9, 18, '2026-09-28T12:49:22.000000000Z'),
+        bid('funder-a', 2.5, 24, '2026-09-28T12:49:24.000000000Z'),
+      ]);
+      await screen.settle();
+
+      expect(rowOf(screen.page, 'funder-a')?.textContent).toContain('Em disputa');
+      expect(rowOf(screen.page, 'funder-a')?.textContent).not.toContain('Ultrapassada');
+    });
+  });
+
+  it('marca no histórico o último leilão acompanhado', async () => {
+    const screen = await render(new FakeFeed());
+    await screen.typeProposalId(A_PROPOSAL_ID);
+    await screen.clickWatch();
+    await screen.navigateTo('Histórico');
+
+    expect(screen.page.querySelector('ul li')?.textContent).toContain('Último acompanhado');
   });
 });

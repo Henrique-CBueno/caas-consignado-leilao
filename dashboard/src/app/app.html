@@ -6,6 +6,10 @@
     <a routerLink="/">Ao vivo</a>
     <a routerLink="/historico">Histórico</a>
   </nav>
+  @if (!feed.demo) {
+    <a [href]="trace">Trace</a>
+    <a [href]="metrics">Métricas</a>
+  }
   <button type="button" (click)="themeService.toggle()">Alternar tema</button>
   <span class="status" role="status" [class.status--connected]="connection() === 'connected'">
     {{ connectionLabel() }}
