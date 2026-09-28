@@ -1,14 +1,16 @@
-main {
+header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
   max-width: 640px;
-  margin: 2rem auto;
+  margin: 1rem auto 0;
   font-family: system-ui, sans-serif;
 }
 
-.watch-form {
+nav {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
+  gap: 1rem;
 }
 
 .status {
@@ -19,32 +21,6 @@ main {
   color: #15803d;
 }
 
-.closed-banner {
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-  background: #fef9c3;
-  border: 1px solid #eab308;
-}
-
-.bids {
-  list-style: none;
-  padding: 0;
-}
-
-.bids li {
-  padding: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.empty {
-  color: #6b7280;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+main {
+  font-family: system-ui, sans-serif;
 }

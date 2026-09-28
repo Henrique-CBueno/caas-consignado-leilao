@@ -1,16 +1,21 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter, withHashLocation } from '@angular/router';
 import { App } from './app';
+import { routes } from './app.routes';
 import { AUCTION_FEED, AuctionClosed, AuctionFeed, Bid, ConnectionState } from './auction-feed';
+import { DemoAuctionFeed } from './demo-auction-feed';
 
 class FakeFeed implements AuctionFeed {
   readonly connection = signal<ConnectionState>('idle');
   readonly bids = signal<Bid[]>([]);
   readonly closed = signal<AuctionClosed | null>(null);
+  readonly watching = signal<string | null>(null);
   readonly watched: string[] = [];
 
   watch(proposalId: string): void {
     this.watched.push(proposalId);
+    this.watching.set(proposalId);
   }
 
   stop(): void {}
@@ -22,18 +27,43 @@ function bid(funderId: string, rate: number, termMonths: number, receivedAt: str
 
 const A_PROPOSAL_ID = '2ac7ad63-7381-418c-942a-3aebf59290e3';
 
-async function render(feed: FakeFeed) {
+async function render(feed: AuctionFeed) {
   TestBed.configureTestingModule({
     imports: [App],
-    providers: [{ provide: AUCTION_FEED, useValue: feed }],
+    providers: [
+      { provide: AUCTION_FEED, useValue: feed },
+      provideRouter(routes, withHashLocation()),
+    ],
   });
   const fixture = TestBed.createComponent(App);
+  await TestBed.inject(Router).navigateByUrl('/');
   await fixture.whenStable();
   const page: HTMLElement = fixture.nativeElement;
 
   return {
     page,
     async settle() {
+      await fixture.whenStable();
+    },
+    async clickButton(text: string) {
+      const button = Array.from(page.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes(text),
+      ) as HTMLButtonElement;
+      button.click();
+      await fixture.whenStable();
+    },
+    async clickLink(text: string) {
+      const link = Array.from(page.querySelectorAll('a')).find((a) =>
+        a.textContent?.includes(text),
+      ) as HTMLAnchorElement;
+      link.click();
+      await fixture.whenStable();
+    },
+    async navigateTo(label: string) {
+      const link = Array.from(page.querySelectorAll('a')).find((a) =>
+        a.textContent?.includes(label),
+      ) as HTMLAnchorElement;
+      link.click();
       await fixture.whenStable();
     },
     async typeProposalId(value: string) {
@@ -53,6 +83,8 @@ async function render(feed: FakeFeed) {
 }
 
 describe('Leilão ao vivo', () => {
+  beforeEach(() => localStorage.clear());
+
   it('mostra erro inline e não conecta quando o ID não é um UUID', async () => {
     const feed = new FakeFeed();
     const screen = await render(feed);
@@ -222,6 +254,147 @@ describe('Leilão ao vivo', () => {
       await screen.settle();
 
       expect(result(screen.page)?.textContent).toContain('sem vencedor');
+    });
+  });
+
+  it('navega entre as vistas Ao vivo e Histórico', async () => {
+    const screen = await render(new FakeFeed());
+
+    await screen.navigateTo('Histórico');
+    expect(screen.page.textContent).toContain('Nenhum leilão acompanhado ainda');
+
+    await screen.navigateTo('Ao vivo');
+    expect(screen.page.querySelector('input')).not.toBeNull();
+  });
+
+  describe('histórico local', () => {
+    it('lista na vista Histórico o leilão que foi acompanhado', async () => {
+      const screen = await render(new FakeFeed());
+
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+
+      expect(screen.page.textContent).toContain(A_PROPOSAL_ID);
+      expect(screen.page.textContent).not.toContain('Nenhum leilão acompanhado ainda');
+    });
+
+    it('guarda o desfecho quando o resultado é visto, mesmo com outra vista aberta', async () => {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+      feed.closed.set({ status: 'CLOSED_WITH_WINNER', winningFunderId: 'funder-2', winningRate: 1.92 });
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('funder-2');
+      expect(screen.page.textContent).toContain('1,92%');
+    });
+
+    it('reabre o leilão ao clicar numa entrada do histórico', async () => {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+      await screen.clickLink(A_PROPOSAL_ID);
+
+      expect(feed.watched).toEqual([A_PROPOSAL_ID, A_PROPOSAL_ID]);
+      expect((screen.page.querySelector('input') as HTMLInputElement).value).toBe(A_PROPOSAL_ID);
+    });
+
+    it('limpa o histórico', async () => {
+      const screen = await render(new FakeFeed());
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+
+      await screen.clickButton('Limpar histórico');
+
+      expect(screen.page.textContent).toContain('Nenhum leilão acompanhado ainda');
+      expect(screen.page.textContent).not.toContain(A_PROPOSAL_ID);
+    });
+
+    it('continua funcionando quando o armazenamento do navegador está bloqueado', async () => {
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('bloqueado');
+      });
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('bloqueado');
+      });
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await screen.navigateTo('Histórico');
+
+      expect(feed.watched).toEqual([A_PROPOSAL_ID]);
+      expect(screen.page.textContent).toContain(A_PROPOSAL_ID);
+      vi.restoreAllMocks();
+    });
+  });
+
+  describe('tema', () => {
+    const theme = () => document.documentElement.dataset['theme'];
+    const systemPrefers = (scheme: 'dark' | 'light') =>
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query.includes('dark') && scheme === 'dark',
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+
+    beforeEach(() => document.documentElement.removeAttribute('data-theme'));
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('segue a preferência do sistema quando não há escolha guardada', async () => {
+      systemPrefers('dark');
+      await render(new FakeFeed());
+
+      expect(theme()).toBe('dark');
+    });
+
+    it('a escolha guardada vale mais que a preferência do sistema', async () => {
+      systemPrefers('light');
+      localStorage.setItem('caas.theme', 'dark');
+      await render(new FakeFeed());
+
+      expect(theme()).toBe('dark');
+    });
+
+    it('alterna o tema e lembra a escolha', async () => {
+      systemPrefers('dark');
+      const screen = await render(new FakeFeed());
+
+      await screen.clickButton('Alternar tema');
+
+      expect(theme()).toBe('light');
+      expect(localStorage.getItem('caas.theme')).toBe('light');
+    });
+  });
+
+  describe('modo demonstração', () => {
+    it('avisa que é demonstração e conta a história completa do leilão', async () => {
+      const screen = await render(new DemoAuctionFeed(5));
+      expect(screen.page.textContent).toContain('Modo demonstração');
+
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await screen.settle();
+
+      const rows = Array.from(screen.page.querySelectorAll('ol li'));
+      expect(rows).toHaveLength(4);
+      expect(rows[0].textContent).toContain('funder-2');
+      expect(rows[0].textContent).toContain('Melhor lance');
+      expect(screen.page.querySelector('[aria-label="Resultado do leilão"]')?.textContent).toContain(
+        'funder-2',
+      );
+      expect(screen.page.querySelector('[role="status"]')?.textContent?.trim()).toBe('conectado');
     });
   });
 });

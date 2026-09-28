@@ -22,6 +22,7 @@ export class StompAuctionFeed implements AuctionFeed {
   readonly connection = signal<ConnectionState>('idle');
   readonly bids = signal<Bid[]>([]);
   readonly closed = signal<AuctionClosed | null>(null);
+  readonly watching = signal<string | null>(null);
 
   private client: Client | null = null;
 
@@ -29,6 +30,7 @@ export class StompAuctionFeed implements AuctionFeed {
     this.stop();
     this.bids.set([]);
     this.closed.set(null);
+    this.watching.set(proposalId);
     this.connection.set('connecting');
 
     const client = new Client({
@@ -54,6 +56,7 @@ export class StompAuctionFeed implements AuctionFeed {
   stop(): void {
     this.client?.deactivate();
     this.client = null;
+    this.watching.set(null);
     this.connection.set('idle');
   }
 }

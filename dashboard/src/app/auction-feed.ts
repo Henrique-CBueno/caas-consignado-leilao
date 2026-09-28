@@ -20,6 +20,8 @@ export interface AuctionFeed {
   readonly connection: Signal<ConnectionState>;
   readonly bids: Signal<Bid[]>;
   readonly closed: Signal<AuctionClosed | null>;
+  readonly watching: Signal<string | null>;
+  readonly demo?: boolean;
   watch(proposalId: string): void;
   stop(): void;
 }

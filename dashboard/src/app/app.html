@@ -1,45 +1,17 @@
+<header>
+  @if (feed.demo) {
+    <span class="demo-badge">Modo demonstração</span>
+  }
+  <nav aria-label="Principal">
+    <a routerLink="/">Ao vivo</a>
+    <a routerLink="/historico">Histórico</a>
+  </nav>
+  <button type="button" (click)="themeService.toggle()">Alternar tema</button>
+  <span class="status" role="status" [class.status--connected]="connection() === 'connected'">
+    {{ connectionLabel() }}
+  </span>
+</header>
+
 <main>
-  <h1>Leilão ao vivo</h1>
-
-  <div class="watch-form">
-    <input
-      type="text"
-      placeholder="ID da proposta"
-      [(ngModel)]="proposalId"
-      name="proposalId"
-    />
-    <button type="button" (click)="watch()">Acompanhar</button>
-    <span class="status" role="status" [class.status--connected]="connection() === 'connected'">
-      {{ connectionLabel() }}
-    </span>
-  </div>
-
-  @if (proposalIdError(); as error) {
-    <p class="error" role="alert">{{ error }}</p>
-  }
-
-  @if (closedAuction(); as closed) {
-    <section class="closed-banner" role="region" aria-label="Resultado do leilão">
-      @if (closed.winningFunderId) {
-        Leilão fechado — vencedor {{ closed.winningFunderId }} a {{ formatRate(closed.winningRate ?? 0) }}
-      } @else {
-        Leilão fechado sem vencedor
-      }
-    </section>
-  }
-
-  <p class="visually-hidden" aria-live="polite">{{ leaderAnnouncement() }}</p>
-
-  <ol class="bids">
-    @for (bid of ranking(); track bid.receivedAt + bid.funderId; let first = $first) {
-      <li>
-        @if (first) {
-          <strong>Melhor lance</strong>
-        }
-        {{ bid.funderId }} — {{ formatRate(bid.rate) }} / {{ bid.termMonths }} meses — {{ bid.receivedAt }}
-      </li>
-    } @empty {
-      <li class="empty">Nenhum lance ainda.</li>
-    }
-  </ol>
+  <router-outlet />
 </main>
