@@ -23,16 +23,17 @@ public class KafkaRebroadcastListener {
     @KafkaListener(topics = "auction.bid.placed")
     public void onBidPlaced(String payload) throws Exception {
         AuctionBidPlacedEvent event = objectMapper.readValue(payload, AuctionBidPlacedEvent.class);
-        broadcast(event.proposalId(), new AuctionNotification("BID_PLACED", event));
+        broadcast(event.tenantId(), event.proposalId(), new AuctionNotification("BID_PLACED", event));
     }
 
     @KafkaListener(topics = "auction.closed")
     public void onAuctionClosed(String payload) throws Exception {
         AuctionClosedEvent event = objectMapper.readValue(payload, AuctionClosedEvent.class);
-        broadcast(event.proposalId(), new AuctionNotification("AUCTION_CLOSED", event));
+        broadcast(event.tenantId(), event.proposalId(), new AuctionNotification("AUCTION_CLOSED", event));
     }
 
-    private void broadcast(UUID proposalId, AuctionNotification notification) {
-        messagingTemplate.convertAndSend("/topic/auctions/" + proposalId, notification);
+    // Tópico por tenant (Milestone 18): só o tenant dono do leilão assina este destino.
+    private void broadcast(UUID tenantId, UUID proposalId, AuctionNotification notification) {
+        messagingTemplate.convertAndSend("/topic/tenants/" + tenantId + "/auctions/" + proposalId, notification);
     }
 }

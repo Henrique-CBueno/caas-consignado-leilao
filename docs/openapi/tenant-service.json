@@ -55,11 +55,21 @@
           "400" : {
             "description" : "Nome vazio"
           },
+          "200" : {
+            "description" : "Tenant já existia sem usuário demo; o usuário foi provisionado agora",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            }
+          },
           "409" : {
             "description" : "Nome já existente"
           },
           "502" : {
-            "description" : "Tenant criado mas o usuário demo não pôde ser provisionado"
+            "description" : "Tenant criado mas o usuário demo não pôde ser provisionado (repetir o pedido completa)"
           }
         }
       }

@@ -83,6 +83,8 @@ Em `http://$IP:30090/#/entrar`, use **Entrar como administrador** e abra **Admin
 
 ![Fluxo completo gravado no cluster real](img/demo-fluxo-completo.gif)
 
+**Isolamento no tempo real (ADR-0030).** O WebSocket exige o ID token e os tópicos são por tenant. Com a proposta de Banco Alfa em andamento, entre como Banco Beta e abra `#/?proposta=<id da proposta de Alfa>`: a tela conecta, mas não recebe nenhum lance (o servidor só publica no tópico do tenant dono do leilão e recusa a assinatura do tópico de outro). Verificado no cluster real: `CONNECT` sem token e com token inválido dão `ERROR`; Beta assinando o tópico de Alfa recebe `ERROR`; origem `http://evil.example` é recusada (403) no WebSocket e no preflight do gateway.
+
 O mesmo fluxo pela API (o papel vem do claim `custom:role` do token, ADR-0029):
 
 ```

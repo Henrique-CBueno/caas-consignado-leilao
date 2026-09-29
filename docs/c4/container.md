@@ -16,7 +16,7 @@ flowchart LR
         credit["credit-analysis-service"]
         auction["auction-service"]
         bot["funder-bot-service"]
-        notif["notification-gateway-service<br/>STOMP"]
+        notif["notification-gateway-service<br/>STOMP autenticado, tópico por tenant"]
         contract["contract-service"]
         disb["disbursement-service"]
 
@@ -30,7 +30,8 @@ flowchart LR
 
     analista --> dashboard
     analista --> gateway
-    dashboard -- WebSocket --> notif
+    dashboard -- "WebSocket + ID token" --> notif
+    notif -- JWKS --> cognito
     gateway -- JWKS --> cognito
     gateway -- "/tenants/**, /admin/**" --> tenant
     gateway -- "/proposals/**" --> proposal

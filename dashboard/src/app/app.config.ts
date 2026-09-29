@@ -1,5 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, inject, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withHashLocation } from '@angular/router';
 import { AUCTION_FEED } from './auction-feed';
 import { AUTH, HttpAuth } from './auth';
@@ -18,7 +18,7 @@ export const appConfig: ApplicationConfig = {
       useFactory: () =>
         new URLSearchParams(window.location.search).has('demo')
           ? new DemoAuctionFeed()
-          : new StompAuctionFeed(),
+          : new StompAuctionFeed(inject(AUTH)),
     },
   ],
 };

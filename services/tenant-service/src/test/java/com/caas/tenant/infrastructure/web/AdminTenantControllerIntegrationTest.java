@@ -65,6 +65,9 @@ class AdminTenantControllerIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private com.caas.tenant.application.AdminTenantRepository adminRepository;
+
     private ResponseEntity<String> create(String name) {
         return restTemplate.postForEntity(url(), Map.of("name", name), String.class);
     }
@@ -98,6 +101,21 @@ class AdminTenantControllerIntegrationTest {
         create("Banco Repetido");
 
         assertThat(create("Banco Repetido").getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    // Tenant que ficou gravado sem usuário demo (provedor de identidade caiu na criação): repetir repara.
+    @Test
+    void repeatingTheCreationOfATenantWithoutADemoUserCompletesIt() throws Exception {
+        String id = adminRepository.create("Banco Orfao").id().value().toString();
+
+        ResponseEntity<String> repaired = create("Banco Orfao");
+
+        assertThat(repaired.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(repaired.getBody()).contains(id);
+        JsonNode auth = cognito("InitiateAuth", Map.of("ClientId", clientId, "AuthFlow", "USER_PASSWORD_AUTH",
+            "AuthParameters", Map.of("USERNAME", "banco-orfao@caas.local", "PASSWORD", "Passw0rd1!")));
+        assertThat(auth.path("AuthenticationResult").path("IdToken").asText()).isNotBlank();
+        assertThat(create("Banco Orfao").getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     private static JsonNode cognito(String target, Map<String, Object> body) throws Exception {

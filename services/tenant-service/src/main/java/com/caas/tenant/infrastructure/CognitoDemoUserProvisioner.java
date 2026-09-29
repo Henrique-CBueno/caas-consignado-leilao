@@ -37,7 +37,7 @@ public class CognitoDemoUserProvisioner implements DemoUserProvisioner {
 
     // O emulador tem um único pool ("caas"): descobre o id em vez de exigir mais configuração.
     @Override
-    public void provision(Tenant tenant) {
+    public boolean provision(Tenant tenant) {
         try {
             String poolId = call("ListUserPools", Map.of("MaxResults", 10)).path("UserPools").path(0).path("Id").asText();
             if (poolId.isEmpty()) {
@@ -48,11 +48,15 @@ public class CognitoDemoUserProvisioner implements DemoUserProvisioner {
                 "UserPoolId", poolId, "Username", username, "TemporaryPassword", "Temp1234!",
                 "MessageAction", "SUPPRESS",
                 "UserAttributes", List.of(Map.of("Name", "custom:tenant_id", "Value", tenant.id().value().toString()))));
+            if ("UsernameExistsException".equals(created.path("__type").asText())) {
+                return false;
+            }
             if (created.has("__type")) {
                 throw new IllegalStateException("AdminCreateUser falhou: " + created.path("__type").asText());
             }
             call("AdminSetUserPassword", Map.of(
                 "UserPoolId", poolId, "Username", username, "Password", demoPassword, "Permanent", true));
+            return true;
         } catch (IOException e) {
             throw new IllegalStateException("provedor de identidade inacessível", e);
         } catch (InterruptedException e) {

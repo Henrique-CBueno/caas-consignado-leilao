@@ -76,14 +76,15 @@ deploy-local:
 	$(if $(SLIM),,kubectl create configmap grafana-dashboard-provider -n $(K8S_NS) --from-file=provider.yml=$(K8S_DIR)/observability/config/grafana-dashboard-provider.yml --dry-run=client -o yaml | kubectl apply -f -)
 	$(if $(SLIM),,kubectl create configmap grafana-dashboards -n $(K8S_NS) --from-file=caas-overview.json=$(K8S_DIR)/observability/config/caas-overview.json --dry-run=client -o yaml | kubectl apply -f -)
 	kubectl apply -f $(K8S_DIR)/localstack/ $(foreach p,$(POSTGRES),-f $(K8S_DIR)/postgres/postgres-$(p).yaml) $(foreach s,$(SERVICES),-f $(K8S_DIR)/services/$(s).yaml) $(if $(SLIM),,-f $(K8S_DIR)/dashboard/) $(if $(SLIM),,-f $(K8S_DIR)/observability/) $(if $(SLIM),,-f $(K8S_DIR)/cognito/) $(if $(SLIM),,-f $(K8S_DIR)/network-policies/)
-	# Provedor de identidade: cria pool/client/usuários dos 3 tenants e aponta o JWKS do gateway para o pool real.
+	# Provedor de identidade: cria pool/client/usuários (3 tenants + admin) e aponta o JWKS do gateway e do serviço de
+	# notificações para o pool real; o CORS aceita só a origem do dashboard (NodePort).
 	$(if $(SLIM),,kubectl rollout status deploy/cognito-local -n $(K8S_NS) --timeout=300s)
 	$(if $(SLIM),,kubectl create configmap cognito-bootstrap-script -n $(K8S_NS) --from-file=bootstrap.sh=$(K8S_DIR)/cognito/bootstrap/bootstrap.sh --dry-run=client -o yaml | kubectl apply -f -)
 	$(if $(SLIM),,kubectl delete pod cognito-bootstrap -n $(K8S_NS) --ignore-not-found)
 	$(if $(SLIM),,kubectl apply -f $(K8S_DIR)/cognito/bootstrap/bootstrap-pod.yaml)
 	$(if $(SLIM),,kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/cognito-bootstrap -n $(K8S_NS) --timeout=180s)
-	$(if $(SLIM),,POOL=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^POOL_ID=//p'); CLIENT=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^CLIENT_ID=//p'); kubectl delete pod cognito-bootstrap -n $(K8S_NS); kubectl set env deploy/api-gateway -n $(K8S_NS) APP_COGNITO_JWK_SET_URI=http://cognito-local:9229/$$POOL/.well-known/jwks.json APP_COGNITO_CLIENT_ID=$$CLIENT)
-	$(if $(SLIM),,kubectl rollout status deploy/api-gateway -n $(K8S_NS) --timeout=300s)
+	$(if $(SLIM),,POOL=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^POOL_ID=//p'); CLIENT=$$(kubectl logs -n $(K8S_NS) cognito-bootstrap | sed -n 's/^CLIENT_ID=//p'); kubectl delete pod cognito-bootstrap -n $(K8S_NS); ORIGIN=http://$$($(MK) ip):30090; JWKS=http://cognito-local:9229/$$POOL/.well-known/jwks.json; kubectl set env deploy/api-gateway -n $(K8S_NS) APP_COGNITO_JWK_SET_URI=$$JWKS APP_COGNITO_CLIENT_ID=$$CLIENT APP_CORS_ALLOWED_ORIGINS=$$ORIGIN; kubectl set env deploy/notification-gateway-service -n $(K8S_NS) APP_COGNITO_JWK_SET_URI=$$JWKS APP_CORS_ALLOWED_ORIGINS=$$ORIGIN)
+	$(if $(SLIM),,kubectl rollout status deploy/api-gateway -n $(K8S_NS) --timeout=300s && kubectl rollout status deploy/notification-gateway-service -n $(K8S_NS) --timeout=300s)
 	# 600s: runners de CI têm bem menos CPU que uma máquina de desenvolvedor
 	# (2 vCPUs no GitHub Actions) — pods subindo juntos com pull de imagem a
 	# frio disputam CPU e demoram mais para ficar Ready.

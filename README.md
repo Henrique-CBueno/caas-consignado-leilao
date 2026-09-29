@@ -26,6 +26,7 @@ Fluxo completo no navegador, gravado no cluster real: o administrador cria um ba
 - **Observabilidade**: trace único (OpenTelemetry → Jaeger) atravessando outbox, Kafka e HTTP; métricas Prometheus e dashboard Grafana ([ADR-0011](docs/adr/0011-observabilidade-traces-e-metricas.md)).
 - **Testes em três níveis** (unitário, integração com Testcontainers, contrato com Pact e OpenAPI sem deriva) ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)).
 - **Papéis e isolamento de ponta a ponta**: login de demonstração pelo gateway, papel administrativo que só atravessa a RLS por uma role de privilégio mínimo (`admin_role`: só ler e inserir em `tenants`) e tenants criados pela interface com usuário próprio ([ADR-0028](docs/adr/0028-login-de-demonstracao-e-criacao-de-proposta-no-front.md), [ADR-0029](docs/adr/0029-papel-administrativo-e-painel-de-tenants.md)).
+- **Isolamento no tempo real**: o WebSocket exige o ID token no `CONNECT`, os tópicos são por tenant e o CORS aceita só a origem do dashboard ([ADR-0030](docs/adr/0030-websocket-autenticado-por-tenant-e-cors-restrito.md)).
 - **Metodologia**: spec-first + TDD, com issues como especificação ([ADR-0026](docs/adr/0026-metodologia-spec-first-e-tdd.md)).
 
 ## Arquitetura
@@ -40,7 +41,7 @@ Diagramas C4 em Mermaid: [contexto](docs/c4/context.md), [containers](docs/c4/co
 | `credit-analysis-service` | Decisão de crédito pré e pós-leilão |
 | `auction-service` | Leilão reverso e desempate (DynamoDB) |
 | `funder-bot-service` | Bots financiadores |
-| `notification-gateway-service` | Eventos → WebSocket (STOMP) |
+| `notification-gateway-service` | Eventos → WebSocket (STOMP) autenticado, um tópico por tenant |
 | `contract-service` | Correlaciona leilão e revalidação; assina contrato |
 | `disbursement-service` | Desembolso simulado |
 | `dashboard/` | Angular: leilão ao vivo, histórico local, entrar, nova proposta e administração de tenants |
@@ -70,15 +71,15 @@ make docs-check     # links, ADRs e alvos make da documentação
 
 ## Testes
 
-O front tem testes próprios (`make test-front`, Vitest + jsdom, 52 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
+O front tem testes próprios (`make test-front`, Vitest + jsdom, 55 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
 
 ## Limitações conhecidas
 
 Ditas com franqueza; cada uma está registrada num ADR:
 
-- **O tenant só é derivado do token para o ID token** (claim `custom:tenant_id`); em produção o access token exigiria uma Lambda de pré-geração de token. O **WebSocket** do `notification-gateway-service` segue público e sem autenticação ([ADR-0017](docs/adr/0017-autenticacao-com-cognito-emulado.md)).
-- **Login de demonstração**: um usuário por tenant com senha fixa e documentada; o CORS do gateway é aberto (`*`) nas rotas que o front chama (a proteção real é o JWT); o seletor de entrada só conhece os tenants criados no mesmo navegador (não existe listagem pública) ([ADR-0028](docs/adr/0028-login-de-demonstracao-e-criacao-de-proposta-no-front.md), [ADR-0029](docs/adr/0029-papel-administrativo-e-painel-de-tenants.md)).
-- **Criação de tenant sem transação distribuída**: se o provedor de identidade falhar, a API responde 502 e o tenant já gravado fica sem usuário demo (ADR-0029). Um pool do `cognito-local` anterior à Milestone 17 precisa ser recriado.
+- **O tenant só é derivado do token para o ID token** (claim `custom:tenant_id`); em produção o access token exigiria uma Lambda de pré-geração de token ([ADR-0017](docs/adr/0017-autenticacao-com-cognito-emulado.md)). O WebSocket exige o ID token, mas sem TLS neste ambiente o token trafega em claro, e a conexão aberta não acompanha a expiração do token ([ADR-0030](docs/adr/0030-websocket-autenticado-por-tenant-e-cors-restrito.md)).
+- **Login de demonstração**: um usuário por tenant com senha fixa e documentada; o seletor de entrada só conhece os tenants criados no mesmo navegador (não existe listagem pública) ([ADR-0028](docs/adr/0028-login-de-demonstracao-e-criacao-de-proposta-no-front.md), [ADR-0029](docs/adr/0029-papel-administrativo-e-painel-de-tenants.md)).
+- **Criação de tenant sem transação distribuída**: se o provedor de identidade falhar, a API responde 502 e o tenant fica gravado sem usuário demo; repetir o pedido o completa ([ADR-0029](docs/adr/0029-papel-administrativo-e-painel-de-tenants.md), [ADR-0030](docs/adr/0030-websocket-autenticado-por-tenant-e-cors-restrito.md)). Um pool do `cognito-local` anterior à Milestone 17 precisa ser recriado.
 - **O isolamento de rede depende do CNI Calico** do perfil `caas` (`--cni=calico`); um perfil criado antes dessa mudança precisa ser recriado com `minikube delete -p caas` ([ADR-0024](docs/adr/0024-kubernetes-statefulsets-helm-e-vault-em-modo-dev.md)).
 - **O `cd-minikube` é manual** (`workflow_dispatch`): o runner gratuito do GitHub (2 vCPU / 7 GB) não sustenta o cluster, nem na topologia reduzida ([ADR-0009](docs/adr/0009-topologia-slim-no-ci.md)). O `ci.yml` (testes, `terraform plan` e `docs-check`) roda a cada push.
 - **O `demo-smoke`, que exercita a API real do Jev, depende de um segredo (`OPENROUTER_API_KEY`) e não foi validado sem ele.** Nos testes e no cluster local a decisão de crédito usa um adaptador simulado determinístico ([ADR-0005](docs/adr/0005-integracao-jev-openrouter-e-vault.md)).

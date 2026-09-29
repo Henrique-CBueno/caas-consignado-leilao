@@ -11,6 +11,9 @@ app:
     jwk-set-uri: ${APP_COGNITO_JWK_SET_URI:https://example.invalid/.well-known/jwks.json}
     base-uri: ${APP_COGNITO_BASE_URI:http://cognito-local:9229}
     client-id: ${APP_COGNITO_CLIENT_ID:}
+  cors:
+    # Origens do dashboard aceitas no CORS (lista separada por vírgula). Nunca "*" (Milestone 18).
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200}
   auth:
     # Senha fixa dos 3 tenants de demonstração (ADR-0017); nunca um segredo real.
     demo-password: ${APP_AUTH_DEMO_PASSWORD:Passw0rd1!}

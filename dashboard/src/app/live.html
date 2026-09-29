@@ -12,6 +12,12 @@
   <div class="deck">
     <h1>Leilão ao vivo</h1>
 
+    @if (!canWatch()) {
+      <p class="start">
+        Entre com um tenant para acompanhar os leilões dele ao vivo.
+        <a routerLink="/entrar">Entrar</a>
+      </p>
+    } @else {
     <form class="watch" (ngSubmit)="watch()">
       <label for="proposal-id">ID da proposta</label>
       <div class="watch-row">
@@ -90,5 +96,6 @@
         <div class="bay-slot" aria-hidden="true"><span>{{ bay }}º</span></div>
       }
     </div>
+    }
   </div>
 </section>

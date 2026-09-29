@@ -53,10 +53,18 @@ function bid(funderId: string, rate: number, termMonths: number, receivedAt: str
 
 const A_PROPOSAL_ID = '2ac7ad63-7381-418c-942a-3aebf59290e3';
 
+// Ao vivo exige sessão (Milestone 18): por padrão os testes já entram como um tenant.
+function loggedInByDefault(): FakeAuth {
+  const auth = new FakeAuth();
+  auth.tenant.set('alfa');
+  auth.idToken.set('token-alfa');
+  return auth;
+}
+
 async function render(
   feed: AuctionFeed,
   navigate: (url: string) => void = () => {},
-  auth: Auth = new FakeAuth(),
+  auth: Auth = loggedInByDefault(),
 ) {
   TestBed.configureTestingModule({
     imports: [App],
@@ -812,6 +820,28 @@ describe('Leilão ao vivo', () => {
       await screen.clickButton('Banco Ômega');
 
       expect(auth.loginCalls).toEqual(['banco-omega']);
+    });
+  });
+
+  describe('acompanhar exige sessão', () => {
+    it('sem sessão, Ao vivo pede para entrar e não oferece o formulário', async () => {
+      const screen = await render(new FakeFeed(), () => {}, new FakeAuth());
+
+      expect(screen.page.querySelector('#proposal-id')).toBeNull();
+      expect(screen.page.textContent).toContain('Entre com um tenant');
+    });
+
+    it('com sessão, Ao vivo oferece o formulário de acompanhamento', async () => {
+      const screen = await render(new FakeFeed());
+
+      expect(screen.page.querySelector('#proposal-id')).not.toBeNull();
+      expect(screen.page.textContent).not.toContain('Entre com um tenant');
+    });
+
+    it('o modo demonstração continua público, sem sessão', async () => {
+      const screen = await render(new DemoAuctionFeed(), () => {}, new FakeAuth());
+
+      expect(screen.page.querySelector('#proposal-id')).not.toBeNull();
     });
   });
 });

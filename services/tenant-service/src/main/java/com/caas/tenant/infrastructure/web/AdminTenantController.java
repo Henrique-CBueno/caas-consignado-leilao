@@ -39,8 +39,9 @@ public class AdminTenantController {
     @Operation(summary = "Cria um tenant e o usuário de demonstração dele (administrador)", responses = {
         @ApiResponse(responseCode = "201", description = "Tenant criado"),
         @ApiResponse(responseCode = "400", description = "Nome vazio", content = @io.swagger.v3.oas.annotations.media.Content),
+        @ApiResponse(responseCode = "200", description = "Tenant já existia sem usuário demo; o usuário foi provisionado agora"),
         @ApiResponse(responseCode = "409", description = "Nome já existente", content = @io.swagger.v3.oas.annotations.media.Content),
-        @ApiResponse(responseCode = "502", description = "Tenant criado mas o usuário demo não pôde ser provisionado", content = @io.swagger.v3.oas.annotations.media.Content)
+        @ApiResponse(responseCode = "502", description = "Tenant criado mas o usuário demo não pôde ser provisionado (repetir o pedido completa)", content = @io.swagger.v3.oas.annotations.media.Content)
     })
     @PostMapping("/admin/tenants")
     public ResponseEntity<?> create(@RequestBody CreateTenantRequest request) {
@@ -48,18 +49,34 @@ public class AdminTenantController {
         if (name.isEmpty() || com.caas.tenant.infrastructure.CognitoDemoUserProvisioner.usernameFor(name).startsWith("@")) {
             return ResponseEntity.badRequest().body(Map.of("message", "Informe o nome do tenant."));
         }
+        // Idempotente: um tenant gravado sem usuário demo (falha do provedor na criação anterior) é
+        // completado ao repetir o pedido (200); se o usuário já existia, é duplicata (409).
         Tenant tenant;
+        boolean existed = false;
         try {
             tenant = repository.create(name);
         } catch (DataIntegrityViolationException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Já existe um tenant com esse nome."));
+            tenant = repository.list().stream().filter(t -> t.name().equals(name)).findFirst().orElse(null);
+            if (tenant == null) {
+                return conflict();
+            }
+            existed = true;
         }
+        boolean provisioned;
         try {
-            provisioner.provision(tenant);
+            provisioned = provisioner.provision(tenant);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
-                "message", "Tenant criado, mas o usuário de demonstração não pôde ser provisionado."));
+                "message", "Tenant criado, mas o usuário de demonstração não pôde ser provisionado. Repita para completar."));
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(new TenantResponse(tenant.id().value(), tenant.name()));
+        if (!provisioned) {
+            return conflict();
+        }
+        return ResponseEntity.status(existed ? HttpStatus.OK : HttpStatus.CREATED)
+            .body(new TenantResponse(tenant.id().value(), tenant.name()));
+    }
+
+    private static ResponseEntity<?> conflict() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Já existe um tenant com esse nome."));
     }
 }

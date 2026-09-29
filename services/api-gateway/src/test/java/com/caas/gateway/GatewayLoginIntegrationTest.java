@@ -62,6 +62,7 @@ class GatewayLoginIntegrationTest {
         cognito.createUser("alfa@caas.local", "11111111-1111-1111-1111-111111111111");
         cognito.createUser("banco-omega@caas.local", "44444444-4444-4444-4444-444444444444");
 
+        registry.add("app.cors.allowed-origins", () -> "http://localhost:30090");
         registry.add("app.cognito.jwk-set-uri", cognito::jwkSetUri);
         registry.add("app.cognito.base-uri", cognito::baseUri);
         registry.add("app.cognito.client-id", cognito::clientId);
@@ -164,5 +165,23 @@ class GatewayLoginIntegrationTest {
             .exchange()
             .expectStatus().isOk()
             .expectHeader().exists("Access-Control-Allow-Origin");
+
+        webTestClient.options().uri("/admin/tenants")
+            .header("Origin", "http://localhost:30090")
+            .header("Access-Control-Request-Method", "POST")
+            .exchange()
+            .expectStatus().isOk()
+            .expectHeader().exists("Access-Control-Allow-Origin");
+    }
+
+    @Test
+    void thePreflightFromAnyOtherOriginIsRefused() {
+        for (String path : new String[] {"/auth/login", "/proposals", "/admin/tenants"}) {
+            webTestClient.options().uri(path)
+                .header("Origin", "http://evil.example")
+                .header("Access-Control-Request-Method", "POST")
+                .exchange()
+                .expectStatus().isForbidden();
+        }
     }
 }

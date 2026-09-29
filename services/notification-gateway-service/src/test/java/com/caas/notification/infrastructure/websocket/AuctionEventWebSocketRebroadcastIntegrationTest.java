@@ -1,6 +1,7 @@
 package com.caas.notification.infrastructure.websocket;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.caas.events.AuctionBidPlacedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,11 +30,14 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+// Milestone 18: o WebSocket exige o ID token no CONNECT e só entrega eventos do tenant do token.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 class AuctionEventWebSocketRebroadcastIntegrationTest {
@@ -41,9 +45,27 @@ class AuctionEventWebSocketRebroadcastIntegrationTest {
     @Container
     static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.7.1"));
 
+    @Container
+    static GenericContainer<?> cognitoLocal =
+        new GenericContainer<>(DockerImageName.parse("jagregory/cognito-local:latest"))
+            .withExposedPorts(9229)
+            .waitingFor(Wait.forLogMessage(".*Cognito Local running.*\\n", 1));
+
+    private static final UUID TENANT_A = UUID.randomUUID();
+    private static final UUID TENANT_B = UUID.randomUUID();
+    private static String tokenA;
+    private static String tokenB;
+    private static String adminToken;
+
     @DynamicPropertySource
-    static void properties(DynamicPropertyRegistry registry) {
+    static void properties(DynamicPropertyRegistry registry) throws Exception {
+        CognitoLocalFixture cognito =
+            new CognitoLocalFixture("http://" + cognitoLocal.getHost() + ":" + cognitoLocal.getMappedPort(9229));
+        tokenA = cognito.idTokenFor("a@caas.local", "tenant_id", TENANT_A.toString());
+        tokenB = cognito.idTokenFor("b@caas.local", "tenant_id", TENANT_B.toString());
+        adminToken = cognito.idTokenFor("admin@caas.local", "role", "admin");
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+        registry.add("app.cognito.jwk-set-uri", cognito::jwkSetUri);
     }
 
     @LocalServerPort
@@ -51,24 +73,23 @@ class AuctionEventWebSocketRebroadcastIntegrationTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    @Test
-    void bidPlacedEventIsRebroadcastOnlyToSubscribersOfThatAuction() throws Exception {
-        UUID proposalId = UUID.randomUUID();
-        AuctionBidPlacedEvent event = new AuctionBidPlacedEvent(
-            proposalId, UUID.randomUUID(), "funder-alpha", new BigDecimal("1.99"), 24, Instant.now()
-        );
-
+    private StompSession connect(String token) throws Exception {
         WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
         MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
         converter.getObjectMapper().registerModule(new JavaTimeModule());
         stompClient.setMessageConverter(converter);
-
-        BlockingQueue<AuctionNotification> received = new LinkedBlockingQueue<>();
-        StompSession session = stompClient
-            .connectAsync("ws://localhost:" + port + "/ws", new StompSessionHandlerAdapter() { })
+        StompHeaders connectHeaders = new StompHeaders();
+        if (token != null) {
+            connectHeaders.add("Authorization", "Bearer " + token);
+        }
+        return stompClient
+            .connectAsync("ws://localhost:" + port + "/ws", (org.springframework.web.socket.WebSocketHttpHeaders) null, connectHeaders, new StompSessionHandlerAdapter() { })
             .get(5, TimeUnit.SECONDS);
+    }
 
-        session.subscribe("/topic/auctions/" + proposalId, new StompFrameHandler() {
+    private BlockingQueue<AuctionNotification> subscribe(StompSession session, UUID tenant, UUID proposalId) {
+        BlockingQueue<AuctionNotification> received = new LinkedBlockingQueue<>();
+        session.subscribe("/topic/tenants/" + tenant + "/auctions/" + proposalId, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
                 return AuctionNotification.class;
@@ -79,13 +100,65 @@ class AuctionEventWebSocketRebroadcastIntegrationTest {
                 received.add((AuctionNotification) payload);
             }
         });
+        return received;
+    }
 
+    private void publishBid(UUID proposalId, UUID tenant) throws Exception {
+        AuctionBidPlacedEvent event = new AuctionBidPlacedEvent(
+            proposalId, tenant, "funder-alpha", new BigDecimal("1.99"), 24, Instant.now());
         publishToKafka("auction.bid.placed", objectMapper.writeValueAsString(event));
+    }
+
+    @Test
+    void aConnectionWithoutATokenIsRefused() {
+        assertThatThrownBy(() -> connect(null)).isNotNull();
+    }
+
+    @Test
+    void aConnectionWithAnInvalidTokenIsRefused() {
+        assertThatThrownBy(() -> connect("nao.e.um.jwt")).isNotNull();
+    }
+
+    @Test
+    void anIdentityWithoutATenantIsRefused() {
+        assertThatThrownBy(() -> connect(adminToken)).isNotNull();
+    }
+
+    @Test
+    void aTenantReceivesTheBidsOfItsOwnAuction() throws Exception {
+        UUID proposalId = UUID.randomUUID();
+        StompSession session = connect(tokenA);
+        BlockingQueue<AuctionNotification> received = subscribe(session, TENANT_A, proposalId);
+
+        publishBid(proposalId, TENANT_A);
 
         AuctionNotification notification = received.poll(15, TimeUnit.SECONDS);
-
         assertThat(notification).isNotNull();
         assertThat(notification.type()).isEqualTo("BID_PLACED");
+    }
+
+    @Test
+    void aTenantCannotSubscribeToAnotherTenantsTopic() throws Exception {
+        UUID proposalId = UUID.randomUUID();
+        StompSession session = connect(tokenA);
+        BlockingQueue<AuctionNotification> received = subscribe(session, TENANT_B, proposalId);
+
+        publishBid(proposalId, TENANT_B);
+
+        assertThat(received.poll(5, TimeUnit.SECONDS)).isNull();
+    }
+
+    @Test
+    void anotherTenantsEventForTheSameProposalIdNeverReachesTheSubscriber() throws Exception {
+        UUID proposalId = UUID.randomUUID();
+        StompSession session = connect(tokenA);
+        BlockingQueue<AuctionNotification> received = subscribe(session, TENANT_A, proposalId);
+
+        publishBid(proposalId, TENANT_B);
+        assertThat(received.poll(5, TimeUnit.SECONDS)).isNull();
+
+        publishBid(proposalId, TENANT_A);
+        assertThat(received.poll(15, TimeUnit.SECONDS)).isNotNull();
     }
 
     private void publishToKafka(String topic, String payload) throws Exception {

@@ -1,9 +1,10 @@
 import { Component, ElementRef, afterRenderEffect, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ArchiveStrip } from './archive-strip';
 import { AUCTION_FEED, Bid } from './auction-feed';
+import { AUTH } from './auth';
 import { NAVIGATE } from './browser';
 import { HistoryStore } from './history-store';
 
@@ -27,7 +28,7 @@ function byAuctionRank(a: Bid, b: Bid): number {
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Component({
-  imports: [FormsModule, ArchiveStrip],
+  imports: [FormsModule, ArchiveStrip, RouterLink],
   selector: 'app-live',
   styleUrls: ['./live.css', './rack.css'],
   templateUrl: './live.html',
@@ -35,6 +36,9 @@ const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 export class LiveView {
   protected readonly feed = inject(AUCTION_FEED);
   protected readonly history = inject(HistoryStore);
+  private readonly auth = inject(AUTH);
+  // O WebSocket exige o ID token (Milestone 18); só o modo demonstração, sem rede, segue público.
+  protected readonly canWatch = computed(() => this.feed.demo === true || this.auth.tenant() !== null);
   private readonly navigate = inject(NAVIGATE);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private tops = new Map<string, number>();
@@ -84,7 +88,7 @@ export class LiveView {
     // Link do histórico, atalho ou endereço compartilhado (#/?proposta=<id>): começa acompanhando.
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const shared = params.get('proposta');
-      if (shared) {
+      if (shared && this.canWatch()) {
         this.proposalId = shared;
         this.watch();
       }
