@@ -41,19 +41,19 @@ class TenantRepositoryIntegrationTest {
 
     @Test
     void aSavedTenantCanBeRetrievedById() {
-        Tenant tenant = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa");
+        Tenant tenant = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa Teste " + UUID.randomUUID());
 
         TenantContextHolder.set(tenant.id());
         tenantRepository.save(tenant);
         Tenant retrieved = tenantRepository.findById(tenant.id());
 
-        assertThat(retrieved.name()).isEqualTo("Banco Alfa");
+        assertThat(retrieved.name()).isEqualTo(tenant.name());
     }
 
     @Test
     void aTenantSessionCannotReadAnotherTenantsRowById() {
-        Tenant tenantA = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa");
-        Tenant tenantB = new Tenant(new TenantId(UUID.randomUUID()), "Banco Beta");
+        Tenant tenantA = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa Teste " + UUID.randomUUID());
+        Tenant tenantB = new Tenant(new TenantId(UUID.randomUUID()), "Banco Beta Teste " + UUID.randomUUID());
 
         TenantContextHolder.set(tenantA.id());
         tenantRepository.save(tenantA);

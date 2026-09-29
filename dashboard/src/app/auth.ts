@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, InjectionToken, Signal, inject, signal } from '@angular/core';
+import { Injectable, InjectionToken, Signal, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 // Sessão do tenant de demonstração logado (Milestone 16). Vive só na aba (sessionStorage): uma
@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 export interface Auth {
   readonly tenant: Signal<string | null>;
   readonly idToken: Signal<string | null>;
+  readonly isAdmin: Signal<boolean>;
   login(tenant: string): Promise<void>;
   logout(): void;
 }
@@ -28,6 +29,8 @@ export class HttpAuth implements Auth {
 
   readonly tenant = signal<string | null>(this.loadSession()?.tenant ?? null);
   readonly idToken = signal<string | null>(this.loadSession()?.idToken ?? null);
+  // Administrador da plataforma (Milestone 17): a identidade demo "admin"; o gateway é quem impõe o papel.
+  readonly isAdmin = computed(() => this.tenant() === 'admin');
 
   async login(tenant: string): Promise<void> {
     const response = await firstValueFrom(

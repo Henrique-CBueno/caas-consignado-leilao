@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withHashLocation } from '@angular/router';
 import { App } from './app';
@@ -13,6 +13,7 @@ import { DemoAuctionFeed } from './demo-auction-feed';
 class FakeAuth implements Auth {
   readonly tenant = signal<string | null>(null);
   readonly idToken = signal<string | null>(null);
+  readonly isAdmin = computed(() => this.tenant() === 'admin');
   readonly loginCalls: string[] = [];
   failLoginWith: string | null = null;
 
@@ -700,6 +701,117 @@ describe('Leilão ao vivo', () => {
       await screen.settle();
 
       expect(screen.page.querySelector('[role="alert"]')).not.toBeNull();
+    });
+  });
+
+  describe('administração de tenants', () => {
+    function adminAuth(): FakeAuth {
+      const auth = new FakeAuth();
+      auth.tenant.set('admin');
+      auth.idToken.set('token-admin');
+      return auth;
+    }
+
+    it('oferece a entrada como administrador na tela de entrar', async () => {
+      const auth = new FakeAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+      await screen.navigateTo('Entrar');
+
+      await screen.clickButton('Entrar como administrador');
+
+      expect(auth.loginCalls).toEqual(['admin']);
+    });
+
+    it('só a sessão de administrador vê o atalho de Administração (e não vê Nova proposta)', async () => {
+      const common = new FakeAuth();
+      common.tenant.set('alfa');
+      const commonScreen = await render(new FakeFeed(), () => {}, common);
+      expect(commonScreen.page.textContent).not.toContain('Administração');
+      TestBed.resetTestingModule();
+
+      const screen = await render(new FakeFeed(), () => {}, adminAuth());
+
+      expect(screen.page.textContent).toContain('Administração');
+      expect(screen.page.textContent).not.toContain('Nova proposta');
+    });
+
+    it('lista os tenants devolvidos pela API com o token do administrador', async () => {
+      const screen = await render(new FakeFeed(), () => {}, adminAuth());
+      await screen.navigateTo('Administração');
+
+      const request = screen.http.expectOne((r) => r.url.endsWith('/admin/tenants') && r.method === 'GET');
+      expect(request.request.headers.get('Authorization')).toBe('Bearer token-admin');
+      request.flush([{ id: '11111111-1111-1111-1111-111111111111', name: 'Banco Alfa' }]);
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Banco Alfa');
+      expect(screen.page.textContent).toContain('11111111-1111-1111-1111-111111111111');
+    });
+
+    async function openAdmin() {
+      const screen = await render(new FakeFeed(), () => {}, adminAuth());
+      await screen.navigateTo('Administração');
+      screen.http.expectOne((r) => r.method === 'GET').flush([]);
+      await screen.settle();
+      return screen;
+    }
+
+    async function typeTenantName(screen: Awaited<ReturnType<typeof render>>, name: string) {
+      const input = screen.page.querySelector('#tenant-name') as HTMLInputElement;
+      input.value = name;
+      input.dispatchEvent(new Event('input'));
+      await screen.settle();
+    }
+
+    it('cria um tenant, mostra na lista e passa a oferecê-lo na tela de entrar', async () => {
+      const screen = await openAdmin();
+      await typeTenantName(screen, 'Banco Ômega');
+      await screen.clickButton('Criar tenant');
+
+      const request = screen.http.expectOne((r) => r.method === 'POST' && r.url.endsWith('/admin/tenants'));
+      expect(request.request.headers.get('Authorization')).toBe('Bearer token-admin');
+      expect(request.request.body).toEqual({ name: 'Banco Ômega' });
+      request.flush({ id: '44444444-4444-4444-4444-444444444444', name: 'Banco Ômega' }, { status: 201, statusText: 'Created' });
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Banco Ômega');
+      expect(screen.page.textContent).toContain('44444444-4444-4444-4444-444444444444');
+      expect(JSON.parse(localStorage.getItem('caas.tenants') ?? '[]')).toEqual([
+        { slug: 'banco-omega', name: 'Banco Ômega' },
+      ]);
+    });
+
+    it('mostra o erro do backend inline quando a criação falha', async () => {
+      const screen = await openAdmin();
+      await typeTenantName(screen, 'Banco Alfa');
+      await screen.clickButton('Criar tenant');
+
+      screen.http
+        .expectOne((r) => r.method === 'POST')
+        .flush({ message: 'Já existe um tenant com esse nome.' }, { status: 409, statusText: 'Conflict' });
+      await screen.settle();
+
+      expect(screen.page.querySelector('[role="alert"]')?.textContent).toContain('Já existe');
+    });
+
+    it('não envia um nome vazio', async () => {
+      const screen = await openAdmin();
+
+      await screen.clickButton('Criar tenant');
+
+      screen.http.expectNone((r) => r.method === 'POST');
+      expect(screen.page.querySelector('[role="alert"]')).not.toBeNull();
+    });
+
+    it('a tela de entrar oferece os tenants criados antes neste navegador', async () => {
+      localStorage.setItem('caas.tenants', JSON.stringify([{ slug: 'banco-omega', name: 'Banco Ômega' }]));
+      const auth = new FakeAuth();
+      const screen = await render(new FakeFeed(), () => {}, auth);
+      await screen.navigateTo('Entrar');
+
+      await screen.clickButton('Banco Ômega');
+
+      expect(auth.loginCalls).toEqual(['banco-omega']);
     });
   });
 });

@@ -4,7 +4,9 @@
   <nav aria-label="Principal">
     <a routerLink="/" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }">Ao vivo</a>
     <a routerLink="/historico" routerLinkActive="current">Histórico</a>
-    @if (auth.tenant(); as tenant) {
+    @if (auth.isAdmin()) {
+      <a routerLink="/admin" routerLinkActive="current">Administração</a>
+    } @else if (auth.tenant(); as tenant) {
       <a routerLink="/nova-proposta" routerLinkActive="current">Nova proposta</a>
     }
   </nav>

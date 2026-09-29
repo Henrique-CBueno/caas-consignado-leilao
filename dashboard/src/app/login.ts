@@ -1,14 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AUTH } from './auth';
-
-interface DemoTenant {
-  slug: string;
-  name: string;
-}
+import { KnownTenant, KnownTenants } from './known-tenants';
 
 // Sem campo de senha: a senha demo é fixa e já documentada (ADR-0017); a tela só escolhe o tenant.
-const DEMO_TENANTS: DemoTenant[] = [
+const DEMO_TENANTS: KnownTenant[] = [
   { slug: 'alfa', name: 'Banco Alfa' },
   { slug: 'beta', name: 'Banco Beta' },
   { slug: 'gama', name: 'Fintech Gama' },
@@ -26,7 +22,7 @@ const DEMO_TENANTS: DemoTenant[] = [
       }
 
       <ul>
-        @for (tenant of tenants; track tenant.slug) {
+        @for (tenant of tenants(); track tenant.slug) {
           <li>
             <button class="tenant-strip" type="button" [disabled]="loading()" (click)="login(tenant.slug)">
               <span class="holder" aria-hidden="true"></span>
@@ -36,6 +32,10 @@ const DEMO_TENANTS: DemoTenant[] = [
           </li>
         }
       </ul>
+
+      <button class="admin-entry" type="button" [disabled]="loading()" (click)="login('admin')">
+        Entrar como administrador
+      </button>
     </section>
   `,
   styles: `
@@ -84,6 +84,10 @@ const DEMO_TENANTS: DemoTenant[] = [
       filter: brightness(1.04);
     }
 
+    .admin-entry {
+      justify-self: start;
+    }
+
     .name {
       font-size: var(--text-lg);
       font-weight: 700;
@@ -100,7 +104,9 @@ export class LoginView {
   private readonly auth = inject(AUTH);
   private readonly router = inject(Router);
 
-  protected readonly tenants = DEMO_TENANTS;
+  // Os três do seed mais os que o administrador criou neste navegador (não há listagem pública).
+  private readonly known = inject(KnownTenants);
+  protected readonly tenants = computed(() => [...DEMO_TENANTS, ...this.known.created()]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 

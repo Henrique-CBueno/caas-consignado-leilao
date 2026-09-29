@@ -18,9 +18,13 @@ public class TenantHeaderFilter implements GlobalFilter, Ordered {
 
     static final String TENANT_CLAIM = "custom:tenant_id";
     static final String TENANT_HEADER = "X-Tenant-Id";
+    static final String ROLE_CLAIM = "custom:role";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        if (exchange.getRequest().getPath().value().startsWith("/admin/")) {
+            return filterAdmin(exchange, chain);
+        }
         return ReactiveSecurityContextHolder.getContext()
             .map(context -> Optional.ofNullable(
                 ((JwtAuthenticationToken) context.getAuthentication()).getToken().getClaimAsString(TENANT_CLAIM)))
@@ -30,6 +34,15 @@ public class TenantHeaderFilter implements GlobalFilter, Ordered {
                     .request(request -> request.headers(headers -> headers.set(TENANT_HEADER, value)))
                     .build()))
                 .orElseGet(() -> forbid(exchange)));
+    }
+
+    // Milestone 17 (ADR-0029): /admin/** exige o papel administrativo e não carrega tenant;
+    // o papel vem só do JWT validado, nunca de header do cliente.
+    private Mono<Void> filterAdmin(ServerWebExchange exchange, GatewayFilterChain chain) {
+        return ReactiveSecurityContextHolder.getContext()
+            .map(context -> "admin".equals(
+                ((JwtAuthenticationToken) context.getAuthentication()).getToken().getClaimAsString(ROLE_CLAIM)))
+            .flatMap(isAdmin -> isAdmin ? chain.filter(exchange) : forbid(exchange));
     }
 
     private static boolean isUuid(String value) {

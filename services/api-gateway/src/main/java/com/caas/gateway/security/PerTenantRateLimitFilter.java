@@ -41,7 +41,9 @@ public class PerTenantRateLimitFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         return ReactiveSecurityContextHolder.getContext()
             .map(context -> (JwtAuthenticationToken) context.getAuthentication())
-            .map(token -> token.getToken().getClaimAsString(TenantHeaderFilter.TENANT_CLAIM))
+            // /admin/** não tem tenant (Milestone 17): a identidade administrativa tem a própria cota.
+            .map(token -> java.util.Objects.requireNonNullElse(
+                token.getToken().getClaimAsString(TenantHeaderFilter.TENANT_CLAIM), "admin"))
             .flatMap(tenant -> applyRateLimit(tenant, exchange, chain));
     }
 

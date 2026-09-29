@@ -1,12 +1,13 @@
 package com.caas.gateway.auth;
 
-import java.util.Set;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
@@ -15,7 +16,9 @@ import reactor.core.publisher.Mono;
 @RestController
 public class AuthController {
 
-    private static final Set<String> DEMO_TENANTS = Set.of("alfa", "beta", "gama");
+    // Qualquer slug de usuário demo (`<slug>@caas.local`): inclui "admin" e os tenants que o
+    // administrador cria depois do seed (Milestone 17). Quem decide se o usuário existe é o Cognito.
+    private static final Pattern DEMO_SLUG = Pattern.compile("[a-z0-9]+(-[a-z0-9]+)*");
 
     private final CognitoAuthClient cognitoAuthClient;
     private final String demoPassword;
@@ -31,10 +34,13 @@ public class AuthController {
     @PostMapping("/auth/login")
     @ResponseStatus(HttpStatus.OK)
     public Mono<LoginResponse> login(@RequestBody LoginRequest request) {
-        if (!DEMO_TENANTS.contains(request.tenant())) {
+        if (request.tenant() == null || !DEMO_SLUG.matcher(request.tenant()).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant de demonstração desconhecido");
         }
         String username = request.tenant() + "@caas.local";
-        return cognitoAuthClient.login(username, demoPassword).map(LoginResponse::new);
+        return cognitoAuthClient.login(username, demoPassword)
+            .map(LoginResponse::new)
+            .onErrorMap(WebClientResponseException.class,
+                e -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant de demonstração desconhecido"));
     }
 }

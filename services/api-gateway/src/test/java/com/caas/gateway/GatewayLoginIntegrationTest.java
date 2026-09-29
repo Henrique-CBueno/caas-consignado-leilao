@@ -60,6 +60,7 @@ class GatewayLoginIntegrationTest {
         CognitoLocalFixture cognito =
             new CognitoLocalFixture("http://" + cognitoLocal.getHost() + ":" + cognitoLocal.getMappedPort(9229));
         cognito.createUser("alfa@caas.local", "11111111-1111-1111-1111-111111111111");
+        cognito.createUser("banco-omega@caas.local", "44444444-4444-4444-4444-444444444444");
 
         registry.add("app.cognito.jwk-set-uri", cognito::jwkSetUri);
         registry.add("app.cognito.base-uri", cognito::baseUri);
@@ -90,6 +91,21 @@ class GatewayLoginIntegrationTest {
         String idToken = json.path("idToken").asText();
         assertThat(idToken).isNotBlank();
         assertThat(claim(idToken, "custom:tenant_id")).isEqualTo("11111111-1111-1111-1111-111111111111");
+    }
+
+    @Test
+    void aTenantCreatedLaterByTheAdminCanAlsoLogIn() throws Exception {
+        String body = webTestClient.post().uri("/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"tenant\":\"banco-omega\"}")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(String.class)
+            .returnResult()
+            .getResponseBody();
+
+        assertThat(claim(OBJECT_MAPPER.readTree(body).path("idToken").asText(), "custom:tenant_id"))
+            .isEqualTo("44444444-4444-4444-4444-444444444444");
     }
 
     private static String claim(String jwt, String claim) throws Exception {

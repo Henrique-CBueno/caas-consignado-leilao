@@ -25,7 +25,9 @@ final class CognitoLocalFixture {
         this.baseUrl = baseUrl;
         this.poolId = call("CreateUserPool", Map.of(
             "PoolName", "test-pool",
-            "Schema", List.of(Map.of("Name", "tenant_id", "AttributeDataType", "String", "Mutable", true))
+            "Schema", List.of(
+                Map.of("Name", "tenant_id", "AttributeDataType", "String", "Mutable", true),
+                Map.of("Name", "role", "AttributeDataType", "String", "Mutable", true))
         )).path("UserPool").path("Id").asText();
         this.clientId = call("CreateUserPoolClient", Map.of(
             "UserPoolId", poolId,
@@ -55,6 +57,17 @@ final class CognitoLocalFixture {
         call("AdminCreateUser", Map.of(
             "UserPoolId", poolId, "Username", username, "TemporaryPassword", "Temp1234!",
             "MessageAction", "SUPPRESS", "UserAttributes", attributes
+        ));
+        call("AdminSetUserPassword", Map.of(
+            "UserPoolId", poolId, "Username", username, "Password", "Passw0rd1!", "Permanent", true
+        ));
+    }
+
+    // Administrador da plataforma (Milestone 17): claim de papel, sem claim de tenant.
+    void createAdmin(String username) throws IOException, InterruptedException {
+        call("AdminCreateUser", Map.of(
+            "UserPoolId", poolId, "Username", username, "TemporaryPassword", "Temp1234!",
+            "MessageAction", "SUPPRESS", "UserAttributes", List.of(Map.of("Name", "custom:role", "Value", "admin"))
         ));
         call("AdminSetUserPassword", Map.of(
             "UserPoolId", poolId, "Username", username, "Password", "Passw0rd1!", "Permanent", true

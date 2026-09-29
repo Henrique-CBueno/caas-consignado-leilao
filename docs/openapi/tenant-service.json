@@ -6,6 +6,64 @@
     "version" : "1.0"
   },
   "paths" : {
+    "/admin/tenants" : {
+      "get" : {
+        "tags" : [ "admin-tenant-controller" ],
+        "summary" : "Lista todos os tenants (administrador)",
+        "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TenantResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "admin-tenant-controller" ],
+        "summary" : "Cria um tenant e o usuário de demonstração dele (administrador)",
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTenantRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Tenant criado",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Nome vazio"
+          },
+          "409" : {
+            "description" : "Nome já existente"
+          },
+          "502" : {
+            "description" : "Tenant criado mas o usuário demo não pôde ser provisionado"
+          }
+        }
+      }
+    },
     "/tenants/{id}" : {
       "get" : {
         "tags" : [ "tenant-controller" ],
@@ -40,6 +98,14 @@
   },
   "components" : {
     "schemas" : {
+      "CreateTenantRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
       "TenantResponse" : {
         "type" : "object",
         "properties" : {

@@ -71,19 +71,19 @@ class TenantControllerIntegrationTest {
 
     @Test
     void anAuthenticatedTenantCanRetrieveItsOwnConfigViaTheApi() {
-        Tenant tenantA = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa");
+        Tenant tenantA = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa Teste " + UUID.randomUUID());
         seed(tenantA);
 
         ResponseEntity<String> response = getTenant(tenantA.id().value(), tenantA.id().value());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("Banco Alfa");
+        assertThat(response.getBody()).contains(tenantA.name());
     }
 
     @Test
     void aTenantCannotRetrieveAnotherTenantsConfigViaTheApi() {
-        Tenant tenantA = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa");
-        Tenant tenantB = new Tenant(new TenantId(UUID.randomUUID()), "Banco Beta");
+        Tenant tenantA = new Tenant(new TenantId(UUID.randomUUID()), "Banco Alfa Teste " + UUID.randomUUID());
+        Tenant tenantB = new Tenant(new TenantId(UUID.randomUUID()), "Banco Beta Teste " + UUID.randomUUID());
         seed(tenantA);
         seed(tenantB);
 

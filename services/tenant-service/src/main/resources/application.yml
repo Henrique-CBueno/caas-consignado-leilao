@@ -9,3 +9,9 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+
+app:
+  cognito:
+    base-uri: ${APP_COGNITO_BASE_URI:http://cognito-local:9229}
+  auth:
+    demo-password: ${APP_AUTH_DEMO_PASSWORD:Passw0rd1!}

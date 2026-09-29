@@ -24,7 +24,7 @@ flowchart LR
         pg[("Postgres por serviço<br/>RLS")]
         dynamo[("DynamoDB<br/>LocalStack")]
         vault["Vault (modo dev)"]
-        cognito["cognito-local<br/>usuários dos 3 tenants de seed"]
+        cognito["cognito-local<br/>usuários dos 3 tenants de seed e do admin"]
         obs["Jaeger, Prometheus, Grafana"]
     end
 
@@ -32,7 +32,7 @@ flowchart LR
     analista --> gateway
     dashboard -- WebSocket --> notif
     gateway -- JWKS --> cognito
-    gateway -- "/tenants/**" --> tenant
+    gateway -- "/tenants/**, /admin/**" --> tenant
     gateway -- "/proposals/**" --> proposal
     gateway -- "/disbursements/**" --> disb
 
@@ -56,6 +56,7 @@ flowchart LR
     contract --> pg
     disb --> pg
     tenant --> pg
+    tenant -. "usuário demo do tenant novo" .-> cognito
 ```
 
 As NetworkPolicies (Calico) só admitem tráfego para `tenant-service`, `proposal-service` e `disbursement-service` vindo do `api-gateway`, e para o `auction-service` vindo do `funder-bot-service` ([ADR-0024](../adr/0024-kubernetes-statefulsets-helm-e-vault-em-modo-dev.md)); o gateway injeta o `X-Tenant-Id` a partir do claim do token ([ADR-0017](../adr/0017-autenticacao-com-cognito-emulado.md)). Todos os serviços exportam traces (OTLP) para o Jaeger e expõem métricas ao Prometheus (`obs`, ADR-0011); as setas foram omitidas para não poluir. Decomposição e dados por serviço: ADR-0012 e ADR-0016. O `credit-analysis-service` revalida o crédito quando o leilão fecha (etapa `POST_AUCTION`, ADR-0020).

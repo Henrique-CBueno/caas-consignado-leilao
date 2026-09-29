@@ -75,6 +75,13 @@ Abra `http://$IP:30090/#/entrar`, escolha um tenant (Banco Alfa, Banco Beta ou F
 
 ![Nova proposta](img/dashboard-nova-proposta.png)
 
+### Administração de tenants (Milestone 17)
+
+Em `http://$IP:30090/#/entrar`, use **Entrar como administrador** e abra **Administração**: a lista mostra todos os tenants e o formulário **Criar tenant** cadastra um banco novo e o usuário demo dele (ADR-0029). Saia, volte a **Entrar**: o tenant criado aparece na lista (neste navegador) e já permite criar propostas.
+
+![Administração](img/dashboard-admin.png)
+
+
 ## 4. Leilão ao vivo no dashboard (~2 min)
 
 Os bots dão lance de 0,5 a 3 s depois de o leilão abrir, rápido demais para abrir a tela. Para a demonstração, atrase os bots:

@@ -17,7 +17,7 @@ public class GatewayRoutesConfig {
         @Value("${app.routes.disbursement-service-uri}") String disbursementServiceUri
     ) {
         return builder.routes()
-            .route("tenant-service", r -> r.path("/tenants/**")
+            .route("tenant-service", r -> r.path("/tenants/**", "/admin/**")
                 .filters(f -> f.circuitBreaker(c -> c.setName("tenant-service-cb").setFallbackUri("forward:/fallback")))
                 .uri(tenantServiceUri))
             .route("proposal-service", r -> r.path("/proposals/**")

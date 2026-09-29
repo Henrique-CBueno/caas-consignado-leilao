@@ -34,6 +34,7 @@ Decisões de arquitetura do CaaS Consignado Leilão. Cada ADR tem **Status**, **
 | [0026](0026-metodologia-spec-first-e-tdd.md) | Metodologia spec-first e TDD |
 | [0027](0027-front-rack-de-tiras-e-feed-injetavel.md) | Front: feed injetável, modo demonstração e Rack de tiras |
 | [0028](0028-login-de-demonstracao-e-criacao-de-proposta-no-front.md) | Login de demonstração e criação de proposta no front |
+| [0029](0029-papel-administrativo-e-painel-de-tenants.md) | Papel administrativo e painel de tenants |
 
 ## Mapa dos 26 temas do plano
 
