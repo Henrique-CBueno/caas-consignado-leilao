@@ -2,6 +2,7 @@ package com.caas.proposal.infrastructure.web;
 
 import com.caas.proposal.application.CreateProposalCommand;
 import com.caas.proposal.application.CreateProposalUseCase;
+import com.caas.proposal.application.ProposalPage;
 import com.caas.proposal.application.ProposalRepository;
 import com.caas.proposal.domain.Proposal;
 import com.caas.proposal.domain.ProposalId;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -61,6 +63,16 @@ public class ProposalController {
             request.termMonths()
         ));
         return toResponse(saved);
+    }
+
+    @Operation(summary = "Lista as propostas do tenant, da mais recente para a mais antiga", description = "Paginada (page a partir de 0; size de 1 a 100, padrão 20). Não traz status: ele não avança do valor inicial (ADR-0031).")
+    @Parameter(name = "X-Tenant-Id", in = ParameterIn.HEADER, required = true, description = "Tenant da requisição (injetado pelo api-gateway após validar o JWT)")
+    @GetMapping("/proposals")
+    public ProposalPage list(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        return proposalRepository.list(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
     }
 
     @Operation(summary = "Consulta uma proposta pelo id", responses = {

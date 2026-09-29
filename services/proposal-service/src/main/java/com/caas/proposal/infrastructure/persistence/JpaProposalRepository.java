@@ -1,5 +1,6 @@
 package com.caas.proposal.infrastructure.persistence;
 
+import com.caas.proposal.application.ProposalPage;
 import com.caas.proposal.application.ProposalRepository;
 import com.caas.proposal.domain.Proposal;
 import com.caas.proposal.domain.ProposalId;
@@ -7,6 +8,9 @@ import com.caas.proposal.domain.ProposalStatus;
 import com.caas.proposal.domain.TenantId;
 import com.caas.proposal.infrastructure.TenantContextHolder;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +35,25 @@ public class JpaProposalRepository implements ProposalRepository {
             proposal.borrowerId(),
             proposal.requestedAmount(),
             proposal.termMonths(),
-            proposal.status().name()
+            proposal.status().name(),
+            Instant.now()
         ));
         return toDomain(saved);
+    }
+
+    // Mesmo isolamento da consulta por id: role restrita + contexto do tenant; sem contexto, a RLS devolve vazio.
+    @Override
+    @Transactional
+    public ProposalPage list(int page, int size) {
+        applyTenantContext();
+        Slice<ProposalJpaEntity> slice =
+            springDataRepository.findAllByOrderByCreatedAtDescIdDesc(PageRequest.of(page, size));
+        return new ProposalPage(
+            slice.getContent().stream()
+                .map(e -> new ProposalPage.Item(
+                    e.getId(), e.getBorrowerId(), e.getRequestedAmount(), e.getTermMonths(), e.getCreatedAt()))
+                .toList(),
+            slice.hasNext());
     }
 
     @Override

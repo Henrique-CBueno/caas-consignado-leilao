@@ -7,6 +7,7 @@
     @if (auth.isAdmin()) {
       <a routerLink="/admin" routerLinkActive="current">Administração</a>
     } @else if (auth.tenant(); as tenant) {
+      <a routerLink="/propostas" routerLinkActive="current">Propostas</a>
       <a routerLink="/nova-proposta" routerLinkActive="current">Nova proposta</a>
     }
   </nav>

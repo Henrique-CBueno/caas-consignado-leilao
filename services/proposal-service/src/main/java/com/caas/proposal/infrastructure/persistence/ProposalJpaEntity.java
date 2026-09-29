@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -25,4 +26,5 @@ public class ProposalJpaEntity {
     private BigDecimal requestedAmount;
     private int termMonths;
     private String status;
+    private Instant createdAt;
 }

@@ -7,4 +7,6 @@ public interface ProposalRepository {
     Proposal save(Proposal proposal);
 
     Proposal findById(ProposalId id);
+
+    ProposalPage list(int page, int size);
 }

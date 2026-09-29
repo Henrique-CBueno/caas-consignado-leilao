@@ -75,6 +75,12 @@ Abra `http://$IP:30090/#/entrar`, escolha um tenant (Banco Alfa, Banco Beta ou F
 
 ![Nova proposta](img/dashboard-nova-proposta.png)
 
+### Propostas do tenant (Milestone 19)
+
+Logado como um tenant, **Propostas** lista do servidor as propostas dele, da mais recente para a mais antiga (tomador, valor, prazo, data); clicar numa tira abre o acompanhamento ao vivo daquela proposta. Entrando como Banco Beta, a lista mostra só as propostas do Beta (ADR-0031). A lista não mostra status: ele não avança de `PENDING_CREDIT_ANALYSIS`.
+
+![Propostas](img/dashboard-propostas.png)
+
 ### Administração de tenants (Milestone 17)
 
 Em `http://$IP:30090/#/entrar`, use **Entrar como administrador** e abra **Administração**: a lista mostra todos os tenants e o formulário **Criar tenant** cadastra um banco novo e o usuário demo dele (ADR-0029). Saia, volte a **Entrar**: o tenant criado aparece na lista (neste navegador) e já permite criar propostas.

@@ -37,14 +37,14 @@ Diagramas C4 em Mermaid: [contexto](docs/c4/context.md), [containers](docs/c4/co
 |---|---|
 | `api-gateway` | Borda pública: login de demonstração (`/auth/login`), JWT, tenant derivado do claim, papel administrativo em `/admin/**`, roteamento, Circuit Breaker, rate limit por tenant, CORS das rotas do front |
 | `tenant-service` | Tenants (seed) e API administrativa (listar/criar tenant e seu usuário demo) |
-| `proposal-service` | Originação de propostas |
+| `proposal-service` | Originação de propostas e listagem paginada das propostas do tenant |
 | `credit-analysis-service` | Decisão de crédito pré e pós-leilão |
 | `auction-service` | Leilão reverso e desempate (DynamoDB) |
 | `funder-bot-service` | Bots financiadores |
 | `notification-gateway-service` | Eventos → WebSocket (STOMP) autenticado, um tópico por tenant |
 | `contract-service` | Correlaciona leilão e revalidação; assina contrato |
 | `disbursement-service` | Desembolso simulado |
-| `dashboard/` | Angular: leilão ao vivo, histórico local, entrar, nova proposta e administração de tenants |
+| `dashboard/` | Angular: leilão ao vivo, histórico local, entrar, propostas do tenant, nova proposta e administração de tenants |
 
 ## Como rodar
 
@@ -57,7 +57,7 @@ make token          # ID token de um usuário de seed (TENANT_USER=alfa|beta|gam
 make k8s-down       # desliga e limpa o cluster
 ```
 
-Depois do deploy, o dashboard fica em `http://$(minikube -p caas ip):30090`: **Entrar** (Banco Alfa, Banco Beta, Fintech Gama ou administrador; a senha demo é fixa, ADR-0017), **Nova proposta** e, como administrador, **Administração** para criar um tenant novo e entrar como ele. Roteiro completo para uma demonstração ao vivo: [docs/demo.md](docs/demo.md).
+Depois do deploy, o dashboard fica em `http://$(minikube -p caas ip):30090`: **Entrar** (Banco Alfa, Banco Beta, Fintech Gama ou administrador; a senha demo é fixa, ADR-0017), **Propostas** (lista do servidor), **Nova proposta** e, como administrador, **Administração** para criar um tenant novo e entrar como ele. Roteiro completo para uma demonstração ao vivo: [docs/demo.md](docs/demo.md).
 
 Desenvolvimento do dia a dia:
 
@@ -71,7 +71,7 @@ make docs-check     # links, ADRs e alvos make da documentação
 
 ## Testes
 
-O front tem testes próprios (`make test-front`, Vitest + jsdom, 55 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
+O front tem testes próprios (`make test-front`, Vitest + jsdom, 62 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
 
 ## Limitações conhecidas
 

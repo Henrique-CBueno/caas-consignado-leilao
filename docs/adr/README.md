@@ -36,6 +36,7 @@ Decisões de arquitetura do CaaS Consignado Leilão. Cada ADR tem **Status**, **
 | [0028](0028-login-de-demonstracao-e-criacao-de-proposta-no-front.md) | Login de demonstração e criação de proposta no front |
 | [0029](0029-papel-administrativo-e-painel-de-tenants.md) | Papel administrativo e painel de tenants |
 | [0030](0030-websocket-autenticado-por-tenant-e-cors-restrito.md) | WebSocket autenticado por tenant, CORS restrito e reparo do tenant sem usuário |
+| [0031](0031-listagem-de-propostas-no-servidor.md) | Listagem de propostas no servidor |
 
 ## Mapa dos 26 temas do plano
 

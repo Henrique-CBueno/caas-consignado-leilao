@@ -844,4 +844,101 @@ describe('Leilão ao vivo', () => {
       expect(screen.page.querySelector('#proposal-id')).not.toBeNull();
     });
   });
+
+  describe('propostas do tenant', () => {
+    const item = (id: string, borrowerId: string) => ({
+      id,
+      borrowerId,
+      requestedAmount: 5000,
+      termMonths: 24,
+      createdAt: '2026-09-29T13:39:10.962250Z',
+    });
+    const ID_1 = '11111111-aaaa-4aaa-8aaa-111111111111';
+    const ID_2 = '22222222-bbbb-4bbb-8bbb-222222222222';
+
+    async function openProposals(auth: Auth = loggedInByDefault()) {
+      const feed = new FakeFeed();
+      const screen = await render(feed, () => {}, auth);
+      await screen.navigateTo('Propostas');
+      return { screen, feed };
+    }
+
+    it('lista as propostas devolvidas pela API, com o token da sessão', async () => {
+      const { screen } = await openProposals();
+
+      const request = screen.http.expectOne((r) => r.method === 'GET' && r.url.includes('/proposals?page=0&size=20'));
+      expect(request.request.headers.get('Authorization')).toBe('Bearer token-alfa');
+      request.flush({ items: [item(ID_1, 'cliente-1'), item(ID_2, 'cliente-2')], hasNext: false });
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('cliente-1');
+      expect(screen.page.textContent).toContain('cliente-2');
+      expect(screen.page.textContent).toContain('24');
+    });
+
+    it('cada proposta leva ao acompanhamento do leilão dela', async () => {
+      const { screen, feed } = await openProposals();
+      screen.http.expectOne((r) => r.method === 'GET').flush({ items: [item(ID_1, 'cliente-1')], hasNext: false });
+      await screen.settle();
+
+      await screen.clickLink('cliente-1');
+
+      expect(feed.watched).toEqual([ID_1]);
+    });
+
+    it('sem propostas, explica e oferece criar a primeira', async () => {
+      const { screen } = await openProposals();
+      screen.http.expectOne((r) => r.method === 'GET').flush({ items: [], hasNext: false });
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Nenhuma proposta ainda');
+      expect(Array.from(screen.page.querySelectorAll('main a')).some((a) => a.textContent?.includes('Nova proposta'))).toBe(true);
+    });
+
+    it('mostra o erro inline quando a lista não carrega', async () => {
+      const { screen } = await openProposals();
+      screen.http.expectOne((r) => r.method === 'GET').flush({}, { status: 500, statusText: 'Server Error' });
+      await screen.settle();
+
+      expect(screen.page.querySelector('[role="alert"]')).not.toBeNull();
+    });
+
+    it('carregar mais anexa a próxima página', async () => {
+      const { screen } = await openProposals();
+      screen.http.expectOne((r) => r.method === 'GET').flush({ items: [item(ID_1, 'cliente-1')], hasNext: true });
+      await screen.settle();
+
+      await screen.clickButton('Carregar mais');
+
+      const next = screen.http.expectOne((r) => r.method === 'GET' && r.url.includes('page=1'));
+      next.flush({ items: [item(ID_2, 'cliente-2')], hasNext: false });
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('cliente-1');
+      expect(screen.page.textContent).toContain('cliente-2');
+      expect(screen.page.textContent).not.toContain('Carregar mais');
+    });
+
+    it('sem sessão pede para entrar e não chama a API', async () => {
+      const screen = await render(new FakeFeed(), () => {}, new FakeAuth());
+      await screen.navigateTo('Entrar');
+      await TestBed.inject(Router).navigateByUrl('/propostas');
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Entre com um tenant');
+      screen.http.expectNone(() => true);
+    });
+
+    it('o atalho Propostas aparece para o tenant e não para o administrador', async () => {
+      const tenantScreen = await render(new FakeFeed());
+      expect(tenantScreen.page.textContent).toContain('Propostas');
+      TestBed.resetTestingModule();
+
+      const admin = new FakeAuth();
+      admin.tenant.set('admin');
+      admin.idToken.set('token-admin');
+      const adminScreen = await render(new FakeFeed(), () => {}, admin);
+      expect(adminScreen.page.textContent).not.toContain('Propostas');
+    });
+  });
 });
