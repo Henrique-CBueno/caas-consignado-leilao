@@ -33,6 +33,40 @@ interface CreateProposalResponse {
       </form>
     </section>
   `,
+  styles: `
+    .entry {
+      display: grid;
+      gap: var(--space-4);
+      max-width: 36rem;
+      margin: var(--space-6) auto;
+    }
+
+    form {
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-4);
+      background: var(--rack-2);
+      border: 1px solid var(--rack-line);
+    }
+
+    label {
+      margin-top: var(--space-2);
+      color: var(--ink-2);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+
+    p[role='alert'] {
+      margin: var(--space-2) 0 0;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--accent-text);
+    }
+
+    button {
+      margin-top: var(--space-4);
+      justify-self: start;
+    }
+  `,
 })
 export class NewProposalView {
   private readonly auth = inject(AUTH);

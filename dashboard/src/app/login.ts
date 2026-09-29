@@ -25,16 +25,75 @@ const DEMO_TENANTS: DemoTenant[] = [
         <p role="alert">{{ message }}</p>
       }
 
-      <ul class="rack">
+      <ul>
         @for (tenant of tenants; track tenant.slug) {
           <li>
-            <button type="button" [disabled]="loading()" (click)="login(tenant.slug)">
-              {{ tenant.name }}
+            <button class="tenant-strip" type="button" [disabled]="loading()" (click)="login(tenant.slug)">
+              <span class="holder" aria-hidden="true"></span>
+              <span class="name">{{ tenant.name }}</span>
+              <span class="slug">{{ tenant.slug }}@caas.local</span>
             </button>
           </li>
         }
       </ul>
     </section>
+  `,
+  styles: `
+    .entry {
+      display: grid;
+      gap: var(--space-4);
+      max-width: 36rem;
+      margin: var(--space-6) auto;
+    }
+
+    .entry p {
+      margin: 0;
+      color: var(--ink-2);
+    }
+
+    .entry p[role='alert'] {
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--accent-text);
+      color: var(--ink);
+    }
+
+    ul {
+      display: grid;
+      gap: var(--space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tenant-strip {
+      display: grid;
+      grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: var(--space-3);
+      width: 100%;
+      min-height: 4rem;
+      padding: 0 var(--space-4) 0 0;
+      background: var(--paper);
+      color: var(--paper-ink);
+      border: 1px solid var(--strip-edge);
+      text-align: left;
+    }
+
+    .tenant-strip:hover {
+      background: var(--paper);
+      filter: brightness(1.04);
+    }
+
+    .name {
+      font-size: var(--text-lg);
+      font-weight: 700;
+    }
+
+    .slug {
+      color: var(--paper-ink-2);
+      font-family: var(--font-data);
+      font-size: var(--text-xs);
+    }
   `,
 })
 export class LoginView {

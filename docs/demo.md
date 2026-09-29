@@ -67,6 +67,14 @@ kubectl run probe -n caas --rm -i --restart=Never --image=curlimages/curl:latest
 
 Saída observada: `BLOQUEADO (sem resposta em 5s)`. (Um pod com o label do gateway, ou o próprio gateway, alcança o serviço normalmente — é o que o fluxo feliz faz.)
 
+## 3b. Entrar e criar a proposta pelo dashboard (sem terminal)
+
+Abra `http://$IP:30090/#/entrar`, escolha um tenant (Banco Alfa, Banco Beta ou Fintech Gama) e vá em **Nova proposta**: preencha tomador, valor e prazo e clique em **Criar proposta**. A tela leva direto ao acompanhamento do leilão da proposta recém-criada. O login usa `POST /auth/login` no gateway (ADR-0028); **Sair** limpa a sessão.
+
+![Entrar](img/dashboard-entrar.png)
+
+![Nova proposta](img/dashboard-nova-proposta.png)
+
 ## 4. Leilão ao vivo no dashboard (~2 min)
 
 Os bots dão lance de 0,5 a 3 s depois de o leilão abrir, rápido demais para abrir a tela. Para a demonstração, atrase os bots:
