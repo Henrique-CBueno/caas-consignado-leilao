@@ -14,7 +14,7 @@ IP=$(minikube -p caas ip)
 make deploy-local
 ```
 
-Compila os 9 serviços e o dashboard, sobe o minikube (perfil `caas`), instala Kafka + Zookeeper e Vault por Helm e aplica Postgres (um StatefulSet por serviço), LocalStack, os serviços, o stack de observabilidade, um `cognito-local` (com usuários `alfa@`, `beta@` e `gama@caas.local`, um por tenant de seed) e as NetworkPolicies. Termina quando todos os pods estão `Ready` (23 pods `1/1`).
+Compila os 9 serviços e o dashboard, sobe o minikube (perfil `caas`), instala Kafka + Zookeeper e Vault por Helm e aplica Postgres (um StatefulSet por serviço), LocalStack, os serviços, o stack de observabilidade, um `cognito-local` (com usuários `alfa@`, `beta@` e `gama@caas.local`, um por tenant de seed, e `admin@caas.local`, o administrador da plataforma) e as NetworkPolicies. Termina quando todos os pods estão `Ready` (23 pods `1/1`).
 
 ## 2. Fluxo feliz completo, com prova de observabilidade (~1 min)
 
@@ -80,6 +80,19 @@ Abra `http://$IP:30090/#/entrar`, escolha um tenant (Banco Alfa, Banco Beta ou F
 Em `http://$IP:30090/#/entrar`, use **Entrar como administrador** e abra **Administração**: a lista mostra todos os tenants e o formulário **Criar tenant** cadastra um banco novo e o usuário demo dele (ADR-0029). Saia, volte a **Entrar**: o tenant criado aparece na lista (neste navegador) e já permite criar propostas.
 
 ![Administração](img/dashboard-admin.png)
+
+![Fluxo completo gravado no cluster real](img/demo-fluxo-completo.gif)
+
+O mesmo fluxo pela API (o papel vem do claim `custom:role` do token, ADR-0029):
+
+```
+login() { curl -s -X POST http://$IP:30080/auth/login -H 'Content-Type: application/json' -d "{\"tenant\":\"$1\"}" | sed -n 's/.*"idToken":"\([^"]*\)".*/\1/p'; }
+ADMIN=$(login admin)
+curl -s -X POST http://$IP:30080/admin/tenants -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' -d '{"name":"Banco Ômega"}'   # 201
+NOVO=$(login banco-omega)                                                                                                                      # o usuário demo já existe
+curl -s -o /dev/null -w '%{http_code}\n' http://$IP:30080/admin/tenants -H "Authorization: Bearer $(login alfa)"   # 403: tenant comum
+curl -s -o /dev/null -w '%{http_code}\n' http://$IP:30080/proposals/x -H "Authorization: Bearer $ADMIN"            # 403: admin não vê dados de tenant
+```
 
 
 ## 4. Leilão ao vivo no dashboard (~2 min)
