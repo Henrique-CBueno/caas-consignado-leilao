@@ -2,6 +2,7 @@ package com.caas.notification.infrastructure.kafka;
 
 import com.caas.events.AuctionBidPlacedEvent;
 import com.caas.events.AuctionClosedEvent;
+import com.caas.events.AuctionOpenedEvent;
 import com.caas.notification.infrastructure.websocket.AuctionNotification;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
@@ -18,6 +19,13 @@ public class KafkaRebroadcastListener {
     public KafkaRebroadcastListener(SimpMessagingTemplate messagingTemplate, ObjectMapper objectMapper) {
         this.messagingTemplate = messagingTemplate;
         this.objectMapper = objectMapper;
+    }
+
+    // Milestone 20: a abertura traz o prazo (expiresAt) que o dashboard usa na contagem regressiva.
+    @KafkaListener(topics = "auction.opened")
+    public void onAuctionOpened(String payload) throws Exception {
+        AuctionOpenedEvent event = objectMapper.readValue(payload, AuctionOpenedEvent.class);
+        broadcast(event.tenantId(), event.proposalId(), new AuctionNotification("AUCTION_OPENED", event));
     }
 
     @KafkaListener(topics = "auction.bid.placed")

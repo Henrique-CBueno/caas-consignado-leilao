@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ArchiveStrip } from './archive-strip';
 import { AUCTION_FEED, Bid } from './auction-feed';
 import { AUTH } from './auth';
+import { CLOCK } from './clock';
 import { NAVIGATE } from './browser';
 import { HistoryStore } from './history-store';
 
@@ -37,6 +38,7 @@ export class LiveView {
   protected readonly feed = inject(AUCTION_FEED);
   protected readonly history = inject(HistoryStore);
   private readonly auth = inject(AUTH);
+  private readonly wallClock = inject(CLOCK);
   // O WebSocket exige o ID token (Milestone 18); só o modo demonstração, sem rede, segue público.
   protected readonly canWatch = computed(() => this.feed.demo === true || this.auth.tenant() !== null);
   private readonly navigate = inject(NAVIGATE);
@@ -77,6 +79,23 @@ export class LiveView {
     return leader ? `Melhor lance: ${leader.funderId} a ${this.formatRate(leader.rate)}` : '';
   });
   protected readonly closedAuction = this.feed.closed;
+  // Contagem regressiva (Milestone 20): só existe se a abertura foi recebida ao vivo; nunca estima um prazo.
+  private readonly remainingMs = computed(() => {
+    const opened = this.feed.opened();
+    return opened && this.closedAuction() === null ? Date.parse(opened.expiresAt) - this.wallClock.now() : null;
+  });
+  protected readonly auctionState = computed(() => {
+    const remaining = this.remainingMs();
+    return remaining === null ? null : remaining > 0 ? ('open' as const) : ('waiting' as const);
+  });
+  protected readonly remaining = computed(() => {
+    const seconds = Math.max(0, Math.ceil((this.remainingMs() ?? 0) / 1000));
+    return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  });
+  protected readonly closesAt = computed(() => {
+    const opened = this.feed.opened();
+    return opened ? new Date(opened.expiresAt).toLocaleTimeString('pt-BR') : '';
+  });
 
   constructor() {
     // A tira que muda de posição desliza até ela (FLIP); sem movimento quando o usuário pede menos.

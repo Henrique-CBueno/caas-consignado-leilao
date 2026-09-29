@@ -41,10 +41,10 @@ Diagramas C4 em Mermaid: [contexto](docs/c4/context.md), [containers](docs/c4/co
 | `credit-analysis-service` | Decisão de crédito pré e pós-leilão |
 | `auction-service` | Leilão reverso e desempate (DynamoDB) |
 | `funder-bot-service` | Bots financiadores |
-| `notification-gateway-service` | Eventos → WebSocket (STOMP) autenticado, um tópico por tenant |
+| `notification-gateway-service` | Eventos (abertura, lances, fechamento) → WebSocket (STOMP) autenticado, um tópico por tenant |
 | `contract-service` | Correlaciona leilão e revalidação; assina contrato |
 | `disbursement-service` | Desembolso simulado |
-| `dashboard/` | Angular: leilão ao vivo, histórico local, entrar, propostas do tenant, nova proposta e administração de tenants |
+| `dashboard/` | Angular: leilão ao vivo com contagem regressiva, histórico local, entrar, propostas do tenant, nova proposta e administração de tenants |
 
 ## Como rodar
 
@@ -71,7 +71,7 @@ make docs-check     # links, ADRs e alvos make da documentação
 
 ## Testes
 
-O front tem testes próprios (`make test-front`, Vitest + jsdom, 62 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
+O front tem testes próprios (`make test-front`, Vitest + jsdom, 69 testes de comportamento pelo DOM; ver [ADR-0027](docs/adr/0027-front-rack-de-tiras-e-feed-injetavel.md)). `make test` roda três níveis do backend, separados por sufixo de classe ([ADR-0010](docs/adr/0010-estrategia-de-testes-em-tres-niveis.md)): unitário, `*IntegrationTest` (Testcontainers: Postgres, Kafka, LocalStack, cognito-local, Vault) e `*ContractTest` (Pact entre `funder-bot-service` e `auction-service`; teste de que a OpenAPI commitada não divergiu do código).
 
 ## Limitações conhecidas
 

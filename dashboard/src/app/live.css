@@ -125,3 +125,25 @@
       display: none;
     }
 }
+
+.open-state {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--rack-2);
+  border: 1px solid var(--rack-line);
+}
+
+.open-state p {
+  margin: 0;
+}
+
+.auction-state {
+  font-weight: 700;
+}
+
+.countdown {
+  color: var(--ink-2);
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+}

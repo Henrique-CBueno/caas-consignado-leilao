@@ -55,6 +55,17 @@
       </div>
     }
 
+    @if (auctionState(); as state) {
+      <section class="open-state">
+        <p class="auction-state" role="status">
+          {{ state === 'open' ? 'Leilão aberto' : 'Aguardando o fechamento' }}
+        </p>
+        @if (state === 'open') {
+          <p class="countdown">Fecha em {{ remaining() }} · às {{ closesAt() }}</p>
+        }
+      </section>
+    }
+
     @if (closedAuction(); as closed) {
       <section class="result" role="region" aria-label="Resultado do leilão">
         @if (closed.winningFunderId) {

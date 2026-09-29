@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.caas.events.AuctionBidPlacedEvent;
+import com.caas.events.AuctionOpenedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -107,6 +109,40 @@ class AuctionEventWebSocketRebroadcastIntegrationTest {
         AuctionBidPlacedEvent event = new AuctionBidPlacedEvent(
             proposalId, tenant, "funder-alpha", new BigDecimal("1.99"), 24, Instant.now());
         publishToKafka("auction.bid.placed", objectMapper.writeValueAsString(event));
+    }
+
+    private void publishOpened(UUID proposalId, UUID tenant, Instant expiresAt) throws Exception {
+        AuctionOpenedEvent event = new AuctionOpenedEvent(
+            proposalId, tenant, List.of("funder-alpha"), Instant.now(), expiresAt);
+        publishToKafka("auction.opened", objectMapper.writeValueAsString(event));
+    }
+
+    // Milestone 20: a abertura (com o prazo) chega ao dono do leilão, para a contagem regressiva.
+    @Test
+    void aTenantReceivesTheOpeningOfItsOwnAuctionWithItsDeadline() throws Exception {
+        UUID proposalId = UUID.randomUUID();
+        StompSession session = connect(tokenA);
+        BlockingQueue<AuctionNotification> received = subscribe(session, TENANT_A, proposalId);
+
+        publishOpened(proposalId, TENANT_A, Instant.parse("2026-10-01T12:00:30Z"));
+
+        AuctionNotification notification = received.poll(15, TimeUnit.SECONDS);
+        assertThat(notification).isNotNull();
+        assertThat(notification.type()).isEqualTo("AUCTION_OPENED");
+        assertThat(notification.payload().toString()).contains("2026-10-01T12:00:30Z");
+    }
+
+    @Test
+    void anotherTenantNeverReceivesTheOpeningOfSomeoneElsesAuction() throws Exception {
+        UUID proposalId = UUID.randomUUID();
+        StompSession session = connect(tokenA);
+        BlockingQueue<AuctionNotification> received = subscribe(session, TENANT_A, proposalId);
+
+        publishOpened(proposalId, TENANT_B, Instant.now().plusSeconds(30));
+        assertThat(received.poll(5, TimeUnit.SECONDS)).isNull();
+
+        publishBid(proposalId, TENANT_A);
+        assertThat(received.poll(15, TimeUnit.SECONDS)).isNotNull();
     }
 
     @Test

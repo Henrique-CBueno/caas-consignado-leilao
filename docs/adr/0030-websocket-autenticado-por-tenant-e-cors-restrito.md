@@ -13,6 +13,8 @@ O WebSocket do `notification-gateway-service` era público (ADR-0017): quem soub
 - **CORS configurável** (`APP_CORS_ALLOWED_ORIGINS`, lista): o gateway (`/auth`, `/proposals`, `/admin`) e o handshake do WebSocket só aceitam a origem do dashboard; o `make deploy-local` passa `http://<ip do minikube>:30090`, o padrão de desenvolvimento é `http://localhost:4200`. Origem fora da lista é recusada no preflight.
 - **Criação de tenant idempotente**: repetir `POST /admin/tenants` para um nome que já existe mas cujo usuário demo não existe cria o usuário e responde 200; se o usuário já existia, 409. O 502 (provedor inacessível) deixa de ser um estado sem saída: repetir o pedido repara.
 
+Tipos de notificação no tópico: `AUCTION_OPENED` (Milestone 20, [ADR-0032](0032-contagem-regressiva-do-leilao.md)), `BID_PLACED` e `AUCTION_CLOSED`.
+
 ## Consequências
 - O isolamento entre tenants vale agora também no tempo real; testado com Kafka e `cognito-local` reais (conexão sem token, com token inválido e da identidade admin recusadas; assinatura do tópico alheio recusada; evento de outro tenant nunca entregue).
 - Limitação assumida: sem TLS neste ambiente (`ws://`, `http://`), o token trafega em claro no frame STOMP, como já trafegava no `Authorization` do gateway. Em produção: `wss://` e `https://`.

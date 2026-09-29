@@ -9,6 +9,11 @@ export interface Bid {
   receivedAt: string;
 }
 
+// Abertura do leilão (Milestone 20): o prazo vem do servidor e alimenta a contagem regressiva.
+export interface AuctionOpened {
+  expiresAt: string;
+}
+
 export interface AuctionClosed {
   status: string;
   winningFunderId: string | null;
@@ -19,6 +24,7 @@ export interface AuctionClosed {
 export interface AuctionFeed {
   readonly connection: Signal<ConnectionState>;
   readonly bids: Signal<Bid[]>;
+  readonly opened: Signal<AuctionOpened | null>;
   readonly closed: Signal<AuctionClosed | null>;
   readonly watching: Signal<string | null>;
   readonly demo?: boolean;

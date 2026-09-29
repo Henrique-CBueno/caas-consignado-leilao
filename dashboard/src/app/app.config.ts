@@ -4,6 +4,7 @@ import { provideRouter, withHashLocation } from '@angular/router';
 import { AUCTION_FEED } from './auction-feed';
 import { AUTH, HttpAuth } from './auth';
 import { routes } from './app.routes';
+import { CLOCK, IntervalClock } from './clock';
 import { DemoAuctionFeed } from './demo-auction-feed';
 import { StompAuctionFeed } from './stomp-auction-feed';
 
@@ -13,6 +14,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withHashLocation()),
     provideHttpClient(),
     { provide: AUTH, useClass: HttpAuth },
+    { provide: CLOCK, useFactory: () => new IntervalClock() },
     {
       provide: AUCTION_FEED,
       useFactory: () =>

@@ -5,9 +5,10 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withHashLocation } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
-import { AUCTION_FEED, AuctionClosed, AuctionFeed, Bid, ConnectionState } from './auction-feed';
+import { AUCTION_FEED, AuctionClosed, AuctionFeed, AuctionOpened, Bid, ConnectionState } from './auction-feed';
 import { AUTH, Auth } from './auth';
 import { NAVIGATE } from './browser';
+import { CLOCK, Clock } from './clock';
 import { DemoAuctionFeed } from './demo-auction-feed';
 
 class FakeAuth implements Auth {
@@ -32,7 +33,16 @@ class FakeAuth implements Auth {
   }
 }
 
+class FakeClock implements Clock {
+  readonly now = signal(Date.parse('2026-10-01T12:00:00Z'));
+
+  advance(ms: number): void {
+    this.now.update((current) => current + ms);
+  }
+}
+
 class FakeFeed implements AuctionFeed {
+  readonly opened = signal<AuctionOpened | null>(null);
   readonly connection = signal<ConnectionState>('idle');
   readonly bids = signal<Bid[]>([]);
   readonly closed = signal<AuctionClosed | null>(null);
@@ -66,11 +76,13 @@ async function render(
   navigate: (url: string) => void = () => {},
   auth: Auth = loggedInByDefault(),
 ) {
+  const fakeClock = new FakeClock();
   TestBed.configureTestingModule({
     imports: [App],
     providers: [
       { provide: AUCTION_FEED, useValue: feed },
       { provide: AUTH, useValue: auth },
+      { provide: CLOCK, useValue: fakeClock },
       { provide: NAVIGATE, useValue: navigate },
       provideRouter(routes, withHashLocation()),
       provideHttpClient(),
@@ -84,6 +96,7 @@ async function render(
 
   return {
     page,
+    clock: fakeClock,
     http: TestBed.inject(HttpTestingController),
     async settle() {
       await fixture.whenStable();
@@ -939,6 +952,94 @@ describe('Leilão ao vivo', () => {
       admin.idToken.set('token-admin');
       const adminScreen = await render(new FakeFeed(), () => {}, admin);
       expect(adminScreen.page.textContent).not.toContain('Propostas');
+    });
+  });
+
+  describe('contagem regressiva do leilão', () => {
+    const openIn = (screenClock: FakeClock, seconds: number): AuctionOpened => ({
+      expiresAt: new Date(screenClock.now() + seconds * 1000).toISOString(),
+    });
+
+    async function watching() {
+      const feed = new FakeFeed();
+      const screen = await render(feed);
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      return { feed, screen };
+    }
+
+    it('ao receber a abertura, mostra que o leilão está aberto e quanto falta', async () => {
+      const { feed, screen } = await watching();
+
+      feed.opened.set(openIn(screen.clock, 30));
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Leilão aberto');
+      expect(screen.page.textContent).toContain('Fecha em 00:30');
+    });
+
+    it('a contagem acompanha o relógio', async () => {
+      const { feed, screen } = await watching();
+      feed.opened.set(openIn(screen.clock, 90));
+      await screen.settle();
+
+      screen.clock.advance(25_000);
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Fecha em 01:05');
+    });
+
+    it('ao fechar, a contagem some e o resultado aparece', async () => {
+      const { feed, screen } = await watching();
+      feed.opened.set(openIn(screen.clock, 30));
+      await screen.settle();
+
+      feed.closed.set({ status: 'CLOSED_WITH_WINNER', winningFunderId: 'funder-2', winningRate: 1.92 });
+      await screen.settle();
+
+      expect(screen.page.textContent).not.toContain('Fecha em');
+      expect(screen.page.textContent).not.toContain('Leilão aberto');
+      expect(screen.page.querySelector('[aria-label="Resultado do leilão"]')).not.toBeNull();
+    });
+
+    it('passado o prazo sem fechamento, mostra "Aguardando o fechamento" e nunca tempo negativo', async () => {
+      const { feed, screen } = await watching();
+      feed.opened.set(openIn(screen.clock, 10));
+      await screen.settle();
+
+      screen.clock.advance(11_000);
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Aguardando o fechamento');
+      expect(screen.page.textContent).not.toContain('Fecha em');
+    });
+
+    it('sem abertura recebida, não inventa um prazo', async () => {
+      const { screen } = await watching();
+
+      expect(screen.page.textContent).not.toContain('Leilão aberto');
+      expect(screen.page.textContent).not.toContain('Fecha em');
+    });
+
+    it('o anúncio para leitor de tela é o estado, não o tique de cada segundo', async () => {
+      const { feed, screen } = await watching();
+      feed.opened.set(openIn(screen.clock, 30));
+      await screen.settle();
+
+      const live = screen.page.querySelector('[role="status"].auction-state');
+      expect(live?.textContent).toContain('Leilão aberto');
+      expect(live?.textContent).not.toContain('Fecha em');
+    });
+
+    it('o modo demonstração também mostra a abertura', async () => {
+      const screen = await render(new DemoAuctionFeed(50), () => {}, new FakeAuth());
+      screen.clock.now.set(Date.now()); // o feed simulado usa o relógio real para o prazo
+      await screen.typeProposalId(A_PROPOSAL_ID);
+      await screen.clickWatch();
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      await screen.settle();
+
+      expect(screen.page.textContent).toContain('Leilão aberto');
     });
   });
 });

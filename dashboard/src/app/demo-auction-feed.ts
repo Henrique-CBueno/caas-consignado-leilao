@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import { AuctionClosed, AuctionFeed, Bid, ConnectionState } from './auction-feed';
+import { AuctionClosed, AuctionFeed, AuctionOpened, Bid, ConnectionState } from './auction-feed';
 
 interface Step {
   at: number;
@@ -9,6 +9,7 @@ interface Step {
 // Roteiro fixo, em unidades: conecta, quatro lances (o líder muda no terceiro) e fecha com vencedor.
 const SCRIPT: Step[] = [
   { at: 0.3, run: (f) => f.connection.set('connected') },
+  { at: 0.4, run: (f) => f.open() },
   { at: 1.2, run: (f) => f.emit('funder-1', 2.6, 24) },
   { at: 2.2, run: (f) => f.emit('funder-3', 2.15, 12) },
   { at: 3.4, run: (f) => f.emit('funder-2', 1.92, 18) },
@@ -25,6 +26,7 @@ export class DemoAuctionFeed implements AuctionFeed {
   readonly demo = true;
   readonly connection = signal<ConnectionState>('idle');
   readonly bids = signal<Bid[]>([]);
+  readonly opened = signal<AuctionOpened | null>(null);
   readonly closed = signal<AuctionClosed | null>(null);
   readonly watching = signal<string | null>(null);
 
@@ -36,6 +38,7 @@ export class DemoAuctionFeed implements AuctionFeed {
   watch(proposalId: string): void {
     this.stop();
     this.bids.set([]);
+    this.opened.set(null);
     this.closed.set(null);
     this.watching.set(proposalId);
     this.connection.set('connecting');
@@ -47,6 +50,11 @@ export class DemoAuctionFeed implements AuctionFeed {
     this.timers = [];
     this.watching.set(null);
     this.connection.set('idle');
+  }
+
+  // Abre com o prazo do último passo do roteiro (o fechamento), para a contagem chegar a zero junto dele.
+  open(): void {
+    this.opened.set({ expiresAt: new Date(Date.now() + 6.1 * this.pace).toISOString() });
   }
 
   emit(funderId: string, rate: number, termMonths: number): void {

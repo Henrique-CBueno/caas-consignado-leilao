@@ -1,10 +1,10 @@
 import { signal } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
-import { AuctionClosed, AuctionFeed, Bid, ConnectionState } from './auction-feed';
+import { AuctionClosed, AuctionFeed, AuctionOpened, Bid, ConnectionState } from './auction-feed';
 import { Auth } from './auth';
 
 interface AuctionNotification {
-  type: 'BID_PLACED' | 'AUCTION_CLOSED';
+  type: 'AUCTION_OPENED' | 'BID_PLACED' | 'AUCTION_CLOSED';
   payload: unknown;
 }
 
@@ -27,6 +27,7 @@ function tenantIdOf(idToken: string): string {
 export class StompAuctionFeed implements AuctionFeed {
   readonly connection = signal<ConnectionState>('idle');
   readonly bids = signal<Bid[]>([]);
+  readonly opened = signal<AuctionOpened | null>(null);
   readonly closed = signal<AuctionClosed | null>(null);
   readonly watching = signal<string | null>(null);
 
@@ -37,6 +38,7 @@ export class StompAuctionFeed implements AuctionFeed {
   watch(proposalId: string): void {
     this.stop();
     this.bids.set([]);
+    this.opened.set(null);
     this.closed.set(null);
     this.watching.set(proposalId);
     const idToken = this.auth.idToken();
@@ -54,7 +56,9 @@ export class StompAuctionFeed implements AuctionFeed {
         this.connection.set('connected');
         client.subscribe(`/topic/tenants/${tenantIdOf(idToken)}/auctions/${proposalId}`, (message: IMessage) => {
           const notification: AuctionNotification = JSON.parse(message.body);
-          if (notification.type === 'BID_PLACED') {
+          if (notification.type === 'AUCTION_OPENED') {
+            this.opened.set(notification.payload as AuctionOpened);
+          } else if (notification.type === 'BID_PLACED') {
             this.bids.update((current) => [...current, notification.payload as Bid]);
           } else if (notification.type === 'AUCTION_CLOSED') {
             this.closed.set(notification.payload as AuctionClosed);

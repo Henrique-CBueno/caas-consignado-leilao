@@ -105,6 +105,10 @@ curl -s -o /dev/null -w '%{http_code}\n' http://$IP:30080/proposals/x -H "Author
 
 ## 4. Leilão ao vivo no dashboard (~2 min)
 
+Ao criar a proposta pelo dashboard, a tela mostra **Leilão aberto** e a contagem regressiva até o prazo (`Fecha em mm:ss`); ao fechar, a contagem dá lugar ao resultado (ADR-0032). Só há contagem se você já estiver acompanhando quando o leilão abre.
+
+![Contagem regressiva](img/dashboard-contagem.png)
+
 Os bots dão lance de 0,5 a 3 s depois de o leilão abrir, rápido demais para abrir a tela. Para a demonstração, atrase os bots:
 
 ```
